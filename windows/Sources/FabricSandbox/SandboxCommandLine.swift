@@ -46,15 +46,35 @@ class SandboxCommandLine {
     return nil
   }
 
+  private func usesArgsFile() -> Bool {
+    return args.contains { $0.starts(with: "@") }
+  }
+
+  private func getArgsExpandingArgsFiles() throws -> [String] {
+    if !usesArgsFile() {
+      return args
+    }
+
+    var newArgs: [String] = []
+    for arg in args {
+      if arg.starts(with: "@") {
+        let file = File(String(arg.dropFirst()))
+        let lines = try file.readString().split(separator: "\n").map { String($0) }
+        newArgs.append(contentsOf: lines)
+      } else {
+        newArgs.append(arg)
+      }
+    }
+    return newArgs
+  }
+
   // Returns the arguments to pass to the sandboxed JVM.
-  func getSandboxArgs(dotMinecraftDir: File, sandboxRoot: File, namedPipe: NamedPipeServer) throws
+  func getSandboxArgs(dotMinecraftDir: File, sandboxRoot: File, namedPipePath: String) throws
     -> [String]
   {
-    var args = self.args
+    var args = try getArgsExpandingArgsFiles()
     var jvmArgsIndex = getJvmProp("java.io.tmpdir") == nil ? -1 : 1
     var foundVersionType = false
-
-    print("Sandboxing arguments: \(args)")
 
     for i in 0..<args.count {
       if args[i] == "net.fabricmc.sandbox.Main" {
@@ -107,7 +127,7 @@ class SandboxCommandLine {
         }
       }
 
-      args.insert("-Dsandbox.namedPipe=\(namedPipe.path)", at: jvmArgsIndex)
+      args.insert("-Dsandbox.namedPipe=\(namedPipePath)", at: jvmArgsIndex)
 
       // Enable this to debug the sandboxed process, you will need to exempt the sandbox from the loopback networking like so:
       // CheckNetIsolation.exe LoopbackExempt -is -p=<SID>
@@ -123,6 +143,8 @@ class SandboxCommandLine {
 
     // Remove any javaagent arguments
     args.removeAll { $0.starts(with: "-javaagent") }
+
+    // TODO if an args file was used, we should write a new one with the updated args
     return args
   }
 
