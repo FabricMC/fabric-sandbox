@@ -21,7 +21,7 @@ Network access is enabled, but may have restricted access to localhost as per th
 
 ### Requirements for building
 - Requires ARM64 or x64 Windows 10 or 11
-- Swift for windows either official or from (github.com/thebrowsercompany/swift-build)[https://github.com/thebrowsercompany/swift-build]
+- Swift for windows either official or from [github.com/thebrowsercompany/swift-build](https://github.com/thebrowsercompany/swift-build)
 - Wix installer tools `dotnet tool install --global wix --version 5.0.0` (Used to extract the swift redistributables)
 
 ### FAQ
