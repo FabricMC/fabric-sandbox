@@ -1,0 +1,111 @@
+def jvmHome = org.gradle.internal.jvm.Jvm.current().javaHome
+
+tasks.register("copyJniHeaders", Sync) {
+    from(new File(jvmHome, "include"))
+    into 'Sources/Jni/include'
+
+    // Flatten the directory structure
+    eachFile {
+        path = name
+    }
+    includeEmptyDirs = false
+
+    // Produces a warning during the swift build if there are unused headers
+    exclude("**/AccessBridge*.h")
+    exclude("**/classfile_constants.h")
+    exclude("**/jawt.h")
+    exclude("**/jawt_md.h")
+    exclude("**/jdwpTransport.h")
+    exclude("**/jvmti.h")
+    exclude("**/jvmticmlr.h")
+}
+
+def swiftTask(Exec t, boolean debug, String arch) {
+    t.inputs.file file("Package.swift")
+    t.inputs.dir file("Sources")
+    t.outputs.dir file(".build/${arch}-unknown-windows-msvc/" + (debug ? "debug" : "release"))
+    t.outputs.dir file(".build/artifacts") // Choose a shared output dir to prevent the tasks running at the same time
+    t.dependsOn "copyJniHeaders"
+    t.group "swift"
+}
+
+def swiftBuildTask(Exec t, boolean debug, String arch) {
+    swiftTask(t, debug, arch)
+    def args = ["swift", "build", "--configuration", (debug ? "debug" : "release"), "--arch", arch, "--verbose"]
+    if (debug) {
+        args.addAll(["-Xswiftc", "-g", "-Xswiftc", "-debug-info-format=codeview", "-Xlinker", "-debug"])
+    }
+    t.commandLine args
+}
+
+def swiftPackageTask(Exec t, boolean debug, String arch) {
+    swiftTask(t, debug, arch)
+    def outputDir = file(".build/${arch}-unknown-windows-msvc/" + (debug ? "debug" : "release"))
+    t.commandLine "swift", "run", "--configuration", (debug ? "debug" : "release"), "Packager", "--arch=${arch}", "--dir=${outputDir}"
+    t.standardOutput = System.out
+}
+
+def configurations = ["debug", "release"]
+def architectures = ["x86_64", "aarch64"]
+
+configurations.forEach { config ->
+    architectures.forEach { arch ->
+        def debug = config == "debug"
+        def build = tasks.register("build${config.capitalize()}${arch.capitalize()}", Exec) {
+            swiftBuildTask(it, debug, arch)
+        }
+        tasks.register("package${config.capitalize()}${arch.capitalize()}", Exec) {
+            swiftPackageTask(it, debug, arch)
+            dependsOn build
+        }
+    }
+}
+
+def isAarch64 = System.getProperty("os.arch").contains("aarch64")
+def currentArch = isAarch64 ? "Aarch64" : "X86_64"
+
+tasks.register("buildDebug") {
+    dependsOn "buildDebug$currentArch"
+    group "swift"
+}
+
+tasks.register("buildRelease") {
+    dependsOn "buildRelease$currentArch"
+    group "swift"
+}
+
+tasks.register("packageDebug") {
+    //dependsOn "packageDebugAarch64"
+    dependsOn "packageDebugX86_64"
+    group "swift"
+}
+
+tasks.register("packageRelease") {
+    //dependsOn "packageReleaseAarch64"
+    dependsOn "packageReleaseX86_64"
+    group "swift"
+}
+
+tasks.register("test", Exec) {
+    commandLine "swift" , "test", "--disable-xctest", "-Xswiftc", "-g", "-Xswiftc", "-debug-info-format=codeview", "-Xlinker", "-debug"
+    group "swift"
+}
+
+tasks.register("clean", Exec) {
+    commandLine "swift" , "package", "clean"
+    group "swift"
+}
+
+tasks.register("swiftFormat", Exec) {
+    inputs.dir file("Sources")
+    inputs.dir file("Tests")
+    commandLine "swift", "run", "swift-format", "format", "-r", "-p", "-i", "Sources/", "Tests/"
+    group "swift"
+}
+
+tasks.register("swiftLint", Exec) {
+    inputs.dir file("Sources")
+    inputs.dir file("Tests")
+    commandLine "swift", "run", "swift-format", "lint", "-r", "-p", "Sources/", "Tests/"
+    group "swift"
+}

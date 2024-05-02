@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "mainClass": "net.fabricmc.sandbox.Main",
+  "platforms": {
+    "windows": [
+      "arm64",
+      "x86_64"
+    ]
+  }
+}

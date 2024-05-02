@@ -1,0 +1,54 @@
+plugins {
+	id 'java-library'
+	id 'maven-publish'
+}
+
+version = "0.0.1"
+group = project.maven_group
+
+base {
+	archivesName = project.archives_base_name
+}
+
+tasks.withType(JavaCompile).configureEach {
+	it.options.release = 17
+}
+
+java {
+	sourceCompatibility = JavaVersion.VERSION_17
+	targetCompatibility = JavaVersion.VERSION_17
+}
+
+evaluationDependsOn(":windows")
+
+def archs = [
+	"aarch64",
+	"x86_64"
+]
+
+// Set to "Debug" for debug builds
+def config = "Release"
+
+def collectPackage = tasks.register("collectDlls", Sync) {
+	archs.forEach { arch ->
+		from(fileTree("windows/.build/${arch}-unknown-windows-msvc/${config.toLowerCase()}/package")) {
+			into "fabric-sandbox/${arch}"
+		}
+	}
+	into layout.buildDirectory.dir("package")
+	dependsOn project(":windows").tasks.named("package" + config)
+}
+
+sourceSets.main.resources.srcDir collectPackage
+
+publishing {
+	publications {
+		create("mavenJava", MavenPublication) {
+			artifactId = project.archives_base_name
+			from components.java
+		}
+	}
+
+	repositories {
+	}
+}
