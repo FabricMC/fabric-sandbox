@@ -122,7 +122,7 @@ class FabricSandbox {
 
     print("Launching in sandbox...")
     let args = try commandLine.getSandboxArgs(
-      dotMinecraftDir: dotMinecraft, sandboxRoot: sandboxRoot, namedPipe: namedPipeServer)
+      dotMinecraftDir: dotMinecraft, sandboxRoot: sandboxRoot, namedPipePath: namedPipeServer.path)
     let process = SandboxedProcess(
       application: javaPath, commandLine: args,
       workingDirectory: sandboxWorkingDirectory,
