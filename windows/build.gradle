@@ -31,7 +31,7 @@ def swiftTask(Exec t, boolean debug, String arch) {
 
 def swiftBuildTask(Exec t, boolean debug, String arch) {
     swiftTask(t, debug, arch)
-    def args = ["swift", "build", "--configuration", (debug ? "debug" : "release"), "--arch", arch, "--verbose"]
+    def args = ["swift", "build", "--configuration", (debug ? "debug" : "release"), "--arch", arch]
     if (debug) {
         args.addAll(["-Xswiftc", "-g", "-Xswiftc", "-debug-info-format=codeview", "-Xlinker", "-debug"])
     }

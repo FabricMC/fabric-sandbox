@@ -31,8 +31,7 @@ let package = Package(
         ),
         // A C library containing additional Windows SDK functions that arent included in the default WinSDK module
         .target(
-            name: "WinSDKExtras",
-            swiftSettings: [.interoperabilityMode(.Cxx)]
+            name: "WinSDKExtras"
         ),
         // A collection of utility functions for the Windows platform
         .target(

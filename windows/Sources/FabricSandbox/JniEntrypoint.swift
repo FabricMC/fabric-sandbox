@@ -2,7 +2,7 @@ import Jni
 import WinSDK
 
 @_cdecl("Java_net_fabricmc_sandbox_Main_nativeEntrypoint")
-func entrypoint(env: UnsafeMutablePointer<JNIEnv?>!, clazz: jclass!) {
+public func entrypoint(env: UnsafeMutablePointer<JNIEnv?>!, clazz: jclass!) {
   do {
     try FabricSandbox().run()
   } catch {
