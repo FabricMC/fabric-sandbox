@@ -23,6 +23,7 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/apple/swift-format", revision: "58c2ef5"),
         .package(url: "https://github.com/apple/swift-testing", .upToNextMinor(from: "0.6.0")),
+        .package(url: "https://github.com/apple/swift-log.git", from: "1.0.0"),
         .package(url: "https://github.com/modmuss50/Detours", revision: "23deb11"),
     ],
     targets: [
@@ -58,7 +59,7 @@ let package = Package(
         // The Minecraft/Fabric specific parts of the sandbox
         .target(
             name: "FabricSandbox",
-            dependencies: [ .target(name: "Jni"), .target(name: "WinSDKExtras"), .target(name: "WindowsUtils"), .target(name: "Sandbox")],
+            dependencies: [ .target(name: "Jni"), .target(name: "WinSDKExtras"), .target(name: "WindowsUtils"), .target(name: "Sandbox"), .product(name: "Logging", package: "swift-log")],
             linkerSettings: linkerSettings
         ),
         // The swift code that is used in the sandboxed process, invoked via the hook

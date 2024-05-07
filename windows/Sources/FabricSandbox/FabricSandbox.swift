@@ -2,10 +2,13 @@ import Sandbox
 import WinSDK
 import WinSDKExtras
 import WindowsUtils
+import Logging
 
 /// TODO: Add support for LPAC (Less Privileged AppContainer)
 
 private var lpac = false
+
+var logger = Logger(label: "net.fabricmc.sandbox")
 
 class FabricSandbox {
   func run() throws {
@@ -26,7 +29,9 @@ class FabricSandbox {
       ReleaseMutex(mutex)
     }
 
-    let commandLine = SandboxCommandLine(try getCommandLine())
+    logger.info("Fabric Sandbox")
+
+    let commandLine = try getSandboxCommandLine()
     let workingDirectory = try getWorkingDirectory()
     let javaPath = try commandLine.getApplicationPath()
     let javaDirectory = try commandLine.getJavaHome()
@@ -36,6 +41,17 @@ class FabricSandbox {
     guard let javaPath = javaPath, let javaDirectory = javaDirectory else {
       throw SandboxError("Failed to get Java path or home")
     }
+
+    if isDevEnv {
+      // TODO maybe respect the -Dfabric.log.level property
+      logger.logLevel = .debug
+    }
+
+    logger.debug("Working directory: \(workingDirectory)")
+    logger.debug("Java path: \(javaPath)")
+    logger.debug("Java home: \(javaDirectory)")
+    logger.debug("Is development env: \(isDevEnv)")
+    logger.debug(".minecraft: \(dotMinecraft)")
 
     guard workingDirectory.equals(dotMinecraft) || workingDirectory.isChild(of: dotMinecraft) else {
       // Currently we only mount 1 drive, so the working directory must be a child of .minecraft
@@ -54,7 +70,7 @@ class FabricSandbox {
     let container = try AppContainer.create(
       name: "Fabric Sandbox", description: "Fabric Sandbox", capabilities: capabilities,
       lpac: lpac)
-    print("SID: '\(container.sid)'")
+    logger.debug("AppContainer SID: \(container.sid)")
 
     let driveLetter = MountedDisk.getNextDriveLetter(perfered: "S")
     guard let driveLetter = driveLetter else {
@@ -144,4 +160,10 @@ class FabricSandbox {
     }
     return minecraftDir
   }
+}
+
+private func getSandboxCommandLine() throws -> SandboxCommandLine {
+  let args = try getCommandLine()
+  let expanded = try applyDevLaunchInjectorArgs(args)
+  return SandboxCommandLine(expanded)
 }
