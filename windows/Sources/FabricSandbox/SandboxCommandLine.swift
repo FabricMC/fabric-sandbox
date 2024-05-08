@@ -59,13 +59,25 @@ class SandboxCommandLine {
     for arg in args {
       if arg.starts(with: "@") {
         let file = File(String(arg.dropFirst()))
-        let lines = try file.readString().split(separator: "\n").map { String($0) }
+        let lines = try file.readString().split(separator: "\r\n").map { $0.trimmed() }
         newArgs.append(contentsOf: lines)
       } else {
         newArgs.append(arg)
       }
     }
     return newArgs
+  }
+
+  func isDevEnv() -> Bool {
+    return getJvmProp("fabric.development") == "true"
+  }
+
+  func getAssetsDir() -> File? {
+    let assetsDir = args.firstIndex(of: "--assetsDir")
+    guard let index = assetsDir, index + 1 < args.count else {
+      return nil
+    }
+    return File(args[index + 1])
   }
 
   // Returns the arguments to pass to the sandboxed JVM.
@@ -75,6 +87,7 @@ class SandboxCommandLine {
     var args = try getArgsExpandingArgsFiles()
     var jvmArgsIndex = getJvmProp("java.io.tmpdir") == nil ? -1 : 1
     var foundVersionType = false
+    let isDevEnv = isDevEnv()
 
     for i in 0..<args.count {
       if args[i] == "net.fabricmc.sandbox.Main" {
@@ -97,8 +110,9 @@ class SandboxCommandLine {
         }
       } else if args[i] == "--gameDir" {
         // Replace the game directory with the sandbox root.
-        args[i + 1] = sandboxRoot.path() + "\\"
-      } else if args[i] == "--assetsDir" {
+        args[i + 1] = sandboxRoot.path()
+      } else if args[i] == "--assetsDir" && !isDevEnv {
+        // Replace the assets directory with the sandbox assets directory, in a dev env the assets dir will be granted read access.
         args[i + 1] = sandboxRoot.child("assets").path()
       }
 
@@ -118,12 +132,12 @@ class SandboxCommandLine {
 
     if jvmArgsIndex != -1 {
       if getJvmProp("java.io.tmpdir") == nil {
-        args.insert("-Djava.io.tmpdir=\(sandboxRoot.path())\\temp", at: jvmArgsIndex)
+        args.insert("-Djava.io.tmpdir=\(sandboxRoot.child("temp"))", at: jvmArgsIndex)
       }
 
       for prop in nativePathProperties {
         if getJvmProp(prop) == nil {
-          args.insert("-D\(prop)=\(sandboxRoot.path())\\temp\\bin", at: jvmArgsIndex)
+          args.insert("-D\(prop)=\(sandboxRoot.child("temp").child("bin"))", at: jvmArgsIndex)
         }
       }
 
@@ -133,7 +147,7 @@ class SandboxCommandLine {
       // CheckNetIsolation.exe LoopbackExempt -is -p=<SID>
       //args.insert("-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=*:5055", at: jvmArgsIndex)
     } else {
-      print("Warning: Failed to find any JVM arguments, sandbox may not work correctly")
+      logger.warning("Failed to find any JVM arguments, sandbox may not work correctly")
     }
 
     if !foundVersionType {
@@ -164,7 +178,7 @@ class SandboxCommandLine {
       let source = File(String(path))
 
       guard source.exists() else {
-        print("Warning: Classpath entry does not exist: \(source)")
+        logger.warning("Classpath entry does not exist: \(source)")
         continue
       }
 
@@ -179,7 +193,7 @@ class SandboxCommandLine {
 
         // The classpath entry is not in the minecraft install dir, copy it to the sandbox.
         let target = classpathDir.child(name)
-        print("Warning: Copying classpath entry to sandbox: \(source.path()) -> \(target.path())")
+        logger.debug("Copying classpath entry to sandbox: \(source.path()) -> \(target.path())")
         try source.copy(to: target)
         newClasspath.append(target.path())
       } else {

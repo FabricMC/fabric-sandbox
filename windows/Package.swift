@@ -78,7 +78,7 @@ let package = Package(
         // Packager to copy all the required files into a single directory
         .executableTarget(
             name: "Packager",
-            dependencies: [.target(name: "WinSDKExtras"), .target(name: "WindowsUtils"), .target(name: "Sandbox")],
+            dependencies: [.target(name: "WinSDKExtras"), .target(name: "WindowsUtils"), .target(name: "Sandbox"), .product(name: "Logging", package: "swift-log")],
             linkerSettings: linkerSettings
         ),
         .testTarget(

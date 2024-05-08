@@ -1,10 +1,16 @@
 import Sandbox
 import WindowsUtils
+import Logging
+
+var logger = Logger(label: "net.fabricmc.sandbox.packager")
+logger.logLevel = .debug
 
 let options = try getOptions()
 
-print("Packaging for \(options.arch) in \(options.directory)")
-print("Wix version: \(try SwiftRedistributables.getWixVersion())")
+logger.info("Packaging for \(options.arch) in \(options.directory)")
+
+let wixVersion = try SwiftRedistributables.getWixVersion()
+logger.debug("Wix version: \(wixVersion)")
 
 let packageDir = options.directory.child("package")
 
@@ -33,7 +39,7 @@ try writeLibraryList(
 try writeLibraryList(
   to: packageDir.child("runtime.libs"), libraries: dlls + ["FabricSandboxHook.dll"])
 
-print("Done!")
+logger.info("Done!")
 
 func copyDlls(_ packageDir: File, arch: Architecture, redistributables: [String: File]) throws -> [String] {
   let swiftDlls = [
@@ -80,6 +86,8 @@ func resetDir(_ dir: File) throws {
 }
 
 func run(_ exe: File, args: [String], searchPath: Bool = false) throws -> String {
+  logger.debug("Running \(exe.path()) \(args.joined(separator: " "))")
+
   let output = CollectingOutputConsumer()
   // Not actually sandboxed, but we can reuse the code :)
   let process = SandboxedProcess(
@@ -92,7 +100,7 @@ func run(_ exe: File, args: [String], searchPath: Bool = false) throws -> String
     str.removeLast(1)  // remove trailing newline
   }
   guard exitCode == 0 else {
-    print(str)
+    logger.error("\(str)")
     throw PackagerError("Process exited with code \(exitCode)")
   }
   return str

@@ -89,15 +89,6 @@ public class SandboxedProcess {
     readPipe: HANDLE, writePipe: HANDLE, startupInfo: inout STARTUPINFOEXW
   ) throws -> Int {
     let commandLine = formatCommandLine(commandLine)
-    if let container = container {
-      print("Running '\(application)' '\(commandLine)' in container '\(container.sid)'")
-    } else {
-      print("Running '\(application)' '\(commandLine)'")
-    }
-
-    print("Application: \(application)")
-    print("Command line: \(commandLine)")
-    print("Working directory: \(workingDirectory)")
     fflush(stdout)
 
     return try application.withCString(encodedAs: UTF16.self) { application throws in

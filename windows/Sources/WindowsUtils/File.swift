@@ -16,6 +16,10 @@ public class File: CustomStringConvertible {
   }
 
   public func path(separator: String = "/") -> String {
+    if parts.count == 1 && parts.first!.contains(":") {
+      return parts.first! + separator
+    }
+
     return parts.joined(separator: separator)
   }
 

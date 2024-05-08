@@ -17,6 +17,11 @@ struct FileTests {
     #expect(file.path() == "C:/Users/Test/Documents")
   }
 
+  @Test func createFileRoot() throws {
+    let file = File("C:/")
+    #expect(file.path() == "C:/")
+  }
+
   @Test func parent() throws {
     let file = File("C:/Users/Test/Documents")
     #expect(file.parent()!.path() == "C:/Users/Test")
@@ -39,7 +44,7 @@ struct FileTests {
 
   @Test func root() throws {
     let file = File("C:/Users/Test/Documents")
-    #expect(file.root().path() == "C:")
+    #expect(file.root().path() == "C:/")
   }
 
   @Test func parentOfRoot() throws {
