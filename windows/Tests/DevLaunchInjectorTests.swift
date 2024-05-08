@@ -3,7 +3,7 @@ import FabricSandbox
 import Testing
 
 let testConfig = """
-  commonProperties
+commonProperties
   fabric.development=true
 clientProperties
   java.library.path=/home/user/.gradle/caches/fabric-loom/natives/1.14.4
@@ -11,7 +11,7 @@ clientProperties
 clientArgs
   --assetIndex=1.14.4-1.14
   --assetsDir=/home/user/.gradle/caches/fabric-loom/assets
-  """
+"""
 struct DevLaunchInjectorTests {
   @Test func read() throws {
     let config = try DevLaunchInjector(fromString: testConfig)
