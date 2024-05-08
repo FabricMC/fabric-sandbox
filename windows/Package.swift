@@ -44,10 +44,15 @@ let package = Package(
         .target(
             name: "Shared"
         ),
+        .target(
+            name: "SandboxTestCpp",
+            swiftSettings: [.interoperabilityMode(.Cxx)]
+        ),
         // The executable used with the intergration tests
         .executableTarget(
             name: "SandboxTest",
-            dependencies: [ .target(name: "WindowsUtils") ],
+            dependencies: [ .target(name: "WindowsUtils"), .target(name: "SandboxTestCpp") ],
+            swiftSettings: [.interoperabilityMode(.Cxx)],
             linkerSettings: linkerSettings
         ),
         // The generic sandbox library

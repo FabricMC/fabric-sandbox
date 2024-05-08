@@ -10,6 +10,7 @@ class SandboxTest {
     "namedPipe": NamedPipeCommand(),
     "nameMax": NameMaxCommand(),
     "mouseMovements": MouseMovementsCommand(),
+    "speech": SpeechCommand(),
   ]
 
   static func main() throws {

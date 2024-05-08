@@ -118,6 +118,12 @@ import WindowsUtils
       ["mouseMovements", "-Dsandbox.namedPipe=\(server.path)"], namedPipe: server)
     #expect(exitCode == 0)
   }
+
+  @Test func testSpeech() throws {
+    let (exitCode, output) = try runIntergration(["speech"], capabilities: [.custom("backgroundMediaPlayback")])
+    #expect(exitCode == 0)
+    #expect(output == "Spoke")
+  }
 }
 func runIntergration(
   _ args: [String], capabilities: [SidCapability] = [], filePermissions: [FilePermission] = [],
