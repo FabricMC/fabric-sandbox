@@ -120,7 +120,9 @@ import WindowsUtils
   }
 
   @Test func testSpeech() throws {
-    let (exitCode, output) = try runIntergration(["speech"], capabilities: [.custom("backgroundMediaPlayback")])
+    let server = try SandboxNamedPipeServer(
+      pipeName: "\\\\.\\pipe\\FabricSandbox" + randomString(length: 10))
+    let (exitCode, output) = try runIntergration(["speech"], namedPipe: server)
     #expect(exitCode == 0)
     #expect(output == "Spoke")
   }
@@ -168,14 +170,17 @@ func runIntergration(
       accessPermissions: [.genericRead, .genericExecute])
   }
 
+  var commandLine = [testExecutable.path()] + args
+
   if let namedPipe = namedPipe {
     try grantNamedPipeAccess(
       pipe: namedPipe, appContainer: container, accessPermissions: [.genericRead, .genericWrite])
+    commandLine.append("-Dsandbox.namedPipe=\(namedPipe.path)")
   }
 
   let outputConsumer = TestOutputConsumer()
   let process = SandboxedProcess(
-    application: testExecutable, commandLine: [testExecutable.path()] + args,
+    application: testExecutable, commandLine: commandLine,
     workingDirectory: workingDirectory, container: container, outputConsumer: outputConsumer)
   let exitCode = try process.run()
   return (exitCode, outputConsumer.trimmed())

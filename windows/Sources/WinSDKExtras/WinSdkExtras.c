@@ -3,6 +3,9 @@
 #include <userenv.h>
 #include <VersionHelpers.h>
 
+#define COBJMACROS
+#include <sapi.h>
+
 HRESULT _CreateAppContainerProfile(
     _In_ PCWSTR pszAppContainerName,
     _In_ PCWSTR pszDisplayName,
@@ -86,4 +89,15 @@ DWORD Win32FromHResult(HRESULT hr) {
     }
     // Not a Win32 HRESULT so return a generic error code.
     return ERROR_CAN_NOT_COMPLETE;
+}
+
+HRESULT SAPI_SPEAK(LPCWSTR text, DWORD dwFlags) {
+    ISpVoice* cpVoice;
+    HRESULT hr = CoCreateInstance(&CLSID_SpVoice, NULL, CLSCTX_ALL, &IID_ISpVoice, (void**)&cpVoice);
+
+    if (!SUCCEEDED(hr)) {
+       return hr;
+    }
+
+    return ISpVoice_Speak(cpVoice, text, dwFlags, NULL);
 }

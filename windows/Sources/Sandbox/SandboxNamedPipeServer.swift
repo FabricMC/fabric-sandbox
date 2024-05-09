@@ -1,19 +1,29 @@
 import Shared
 import WinSDK
 import WindowsUtils
+import WinSDKExtras
 
 // A named pipe server that listens for messages from the sandbox
 // and performs the requested privileged operations
 
 public class SandboxNamedPipeServer: NamedPipeServer {
+  var com: Com? = nil
+
   public override init(pipeName: String) throws {
     try super.init(pipeName: pipeName)
   }
 
-  public override func onMessage(_ message: String) -> Bool {
-    let message = PipeMessages.fromString(message)
+  deinit {
+    com = nil
+  }
+
+  public override func onMessage(_ str: String) -> Bool {
+    let message = PipeMessages.fromString(str)
     guard let message = message else {
       print("Unknown pipe message")
+      #if DEBUG
+        fatalError("Unknown pipe message: \(str)")
+      #endif
       return true
     }
 
@@ -34,6 +44,12 @@ public class SandboxNamedPipeServer: NamedPipeServer {
       }
     case .setCursorPos(let pos):
       SetCursorPos(pos.x, pos.y)
+    case .speak(let speak):
+      if com == nil {
+        // Initialize COM for the current thread
+        com = Com()
+      }
+      let result = SAPI_SPEAK(speak.text.wide, speak.flags)
     }
     return false
   }

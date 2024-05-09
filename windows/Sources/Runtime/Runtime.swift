@@ -34,6 +34,10 @@ public func setCursorPos(x: Int32, y: Int32) {
   sendMessage(.setCursorPos(Pos(x: x, y: y)))
 }
 
+public func speak(text: String, flags: UInt32) {
+  sendMessage(.speak(Speak(text: text, flags: flags)))
+}
+
 public func processDetach() {
   // Disconnect and close the pipe client
   pipeClient = nil

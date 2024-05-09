@@ -22,10 +22,21 @@ public struct Rect {
   }
 }
 
+public struct Speak {
+  public var text: String
+  public var flags: UInt32
+
+  public init(text: String, flags: UInt32) {
+    self.text = text
+    self.flags = flags
+  }
+}
+
 public enum PipeMessages {
   case exit
   case clipCursor(Rect)
   case setCursorPos(Pos)
+  case speak(Speak)
 
   // Convert the message from a cvs string
   public static func fromString(_ message: String) -> PipeMessages? {
@@ -55,6 +66,13 @@ public enum PipeMessages {
         return nil
       }
       return .setCursorPos(Pos(x: x, y: y))
+    case "speak":
+      guard csv.count == 3,
+        let flags = UInt32(csv[2])
+      else {
+        return nil
+      }
+      return .speak(Speak(text: String(csv[1]), flags: flags))
     default:
       return nil
     }
@@ -69,6 +87,9 @@ public enum PipeMessages {
       return "clipCursor,\(rect.left),\(rect.top),\(rect.right),\(rect.bottom)"
     case .setCursorPos(let pos):
       return "setCursorPos,\(pos.x),\(pos.y)"
+    case .speak(let speak):
+      // TODO encode the text, as things break when the text contains commas
+      return "speak,\(speak.text),\(speak.flags)"
     }
   }
 }

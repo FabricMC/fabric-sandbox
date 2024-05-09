@@ -4,6 +4,9 @@
 #include <Detours.h>
 #include <string>
 #include <stdexcept>
+#include <sapi.h>
+#include <AtlBase.h>
+#include <AtlConv.h>
 
 using namespace std::string_literals;
 #pragma clang diagnostic ignored "-Wmicrosoft-cast"
@@ -93,11 +96,29 @@ BOOL WINAPI SetCursorPosPatch(int x, int y) {
     return true;
 }
 
+HRESULT __stdcall SpeakPatch(ISpVoice* This, LPCWSTR pwcs, DWORD dwFlags, ULONG *pulStreamNumber) {
+    CW2A utf8(pwcs, CP_UTF8);
+    Runtime::speak(utf8.m_psz, dwFlags);
+    return S_OK;
+}
+
+// Look away now, there has to be a better way to do this
+void* getTrueSpeak() {
+    CoInitializeEx(nullptr, 0);
+    void* spvoice;
+    CoCreateInstance(CLSID_SpVoice, nullptr, CLSCTX_ALL, IID_ISpVoice, &spvoice);
+    void** vtable = *(void***)spvoice;
+    //CoUninitialize(); // Is it that bad if we don't uninitialize?
+    return vtable[20]; // Woo magic numbers
+}
+
 BOOL WINAPI DllMain(HINSTANCE hinst, DWORD dwReason, LPVOID reserved) {
     if (DetourIsHelperProcess()) {
         return true;
     }
+
     if (dwReason == DLL_PROCESS_ATTACH) {
+        auto TrueSpeak = getTrueSpeak();
         Runtime::processAttach();
         DetourRestoreAfterWith();
 
@@ -106,13 +127,16 @@ BOOL WINAPI DllMain(HINSTANCE hinst, DWORD dwReason, LPVOID reserved) {
         DetourAttach(&(PVOID&)TrueGetVolumeInformationW, GetVolumeInformationWPatch);
         DetourAttach(&(PVOID&)TrueClipCursor, ClipCursorPatch);
         DetourAttach(&(PVOID&)TrueSetCursorPos, SetCursorPosPatch);
+        DetourAttach(&(PVOID&)TrueSpeak, SpeakPatch);
         DetourTransactionCommit();
     } else if (dwReason == DLL_PROCESS_DETACH) {
+        auto TrueSpeak = getTrueSpeak();
         DetourTransactionBegin();
         DetourUpdateThread(GetCurrentThread());
         DetourDetach(&(PVOID&)TrueGetVolumeInformationW, GetVolumeInformationWPatch);
         DetourDetach(&(PVOID&)TrueClipCursor, ClipCursorPatch);
         DetourDetach(&(PVOID&)TrueSetCursorPos, SetCursorPosPatch);
+        DetourDetach(&(PVOID&)TrueSpeak, SpeakPatch);
         DetourTransactionCommit();
         Runtime::processDetach();
     }
