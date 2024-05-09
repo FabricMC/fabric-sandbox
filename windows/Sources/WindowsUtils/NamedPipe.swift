@@ -78,8 +78,9 @@ open class NamedPipeServer: Thread {
       // Null terminate the message
       message[Int(bytesRead)] = 0
 
+      // Convert the message to a utf8 byte array via String
       let text = String(decodingCString: message, as: UTF16.self)
-      if onMessage(text) {
+      if onMessage(Array(text.utf8)) {
         break
       }
     }
@@ -89,7 +90,7 @@ open class NamedPipeServer: Thread {
   }
 
   // Receives a message from the client and returns whether the server should stop
-  open func onMessage(_ message: String) -> Bool {
+  open func onMessage(_ message: [UInt8]) -> Bool {
     return false
   }
 }
@@ -123,6 +124,10 @@ public class NamedPipeClient {
 
   deinit {
     CloseHandle(pipe)
+  }
+
+  public func sendBytes(_ bytes: [UInt8]) throws {
+    try send(String(decoding: bytes, as: UTF8.self))
   }
 
   public func send(_ text: String) throws {

@@ -38,58 +38,190 @@ public enum PipeMessages {
   case setCursorPos(Pos)
   case speak(Speak)
 
-  // Convert the message from a cvs string
-  public static func fromString(_ message: String) -> PipeMessages? {
-    let csv = message.split(separator: ",")
-    guard csv.count > 1 else {
+  private var rawValue: UInt8 {
+    switch self {
+    case .exit: return 0
+    case .clipCursor: return 1
+    case .setCursorPos: return 2
+    case .speak: return 3
+    }
+  }
+
+  // Convert the message from a byte array
+  public static func fromBytes(_ bytes: [UInt8]) -> PipeMessages? {
+    guard bytes.count >= 1 else {
       return nil
     }
 
-    switch csv[0] {
-    case "exit":
+    let buffer = ByteBuffer(data: bytes)
+    let type = buffer.readUInt8()!
+
+    switch type {
+    case 0:
       return .exit
-    case "clipCursor":
-      guard csv.count == 5,
-        let left = Int32(csv[1]),
-        let top = Int32(csv[2]),
-        let right = Int32(csv[3]),
-        let bottom = Int32(csv[4])
-      else {
+    case 1:
+      let left = buffer.readInt32()
+      let top = buffer.readInt32()
+      let right = buffer.readInt32()
+      let bottom = buffer.readInt32()
+      guard let left = left, let top = top, let right = right, let bottom = bottom else {
         return nil
       }
-      return .clipCursor(Rect(left: left, top: top, right: right, bottom: bottom))
-    case "setCursorPos":
-      guard csv.count == 3,
-        let x = Int32(csv[1]),
-        let y = Int32(csv[2])
-      else {
+      return .clipCursor(Rect(
+        left: left,
+        top: top,
+        right: right,
+        bottom: bottom
+      ))
+    case 2:
+      let x = buffer.readInt32()
+      let y = buffer.readInt32()
+      guard let x = x, let y = y else {
         return nil
       }
-      return .setCursorPos(Pos(x: x, y: y))
-    case "speak":
-      guard csv.count == 3,
-        let flags = UInt32(csv[2])
-      else {
+      return .setCursorPos(Pos(
+        x: x,
+        y: y
+      ))
+    case 3:
+      let text = buffer.readString()
+      let flags = buffer.readUInt32()
+      guard let text = text, let flags = flags else {
         return nil
       }
-      return .speak(Speak(text: String(csv[1]), flags: flags))
+      return .speak(Speak(
+        text: text,
+        flags: flags
+      ))
     default:
       return nil
     }
   }
 
-  // Convert the message to a csv string
-  public func toString() -> String {
+  // Convert the message to a byte array
+  // The first byte is the message type, the rest is the message data
+  public func toBytes() -> [UInt8] {
+    let buffer = ByteBuffer()
+    buffer.appendUInt8(rawValue)
+
     switch self {
     case .exit:
-      return "exit"
+      break
     case .clipCursor(let rect):
-      return "clipCursor,\(rect.left),\(rect.top),\(rect.right),\(rect.bottom)"
+      buffer.appendInt32(rect.left)
+      buffer.appendInt32(rect.top)
+      buffer.appendInt32(rect.right)
+      buffer.appendInt32(rect.bottom)
     case .setCursorPos(let pos):
-      return "setCursorPos,\(pos.x),\(pos.y)"
+      buffer.appendInt32(pos.x)
+      buffer.appendInt32(pos.y)
     case .speak(let speak):
-      // TODO encode the text, as things break when the text contains commas
-      return "speak,\(speak.text),\(speak.flags)"
+      buffer.appendString(speak.text)
+      buffer.appendUInt32(speak.flags)
     }
+
+    return buffer.data
+  }
+}
+
+private class ByteBuffer {
+  var data: [UInt8]
+
+  init() {
+    data = []
+  }
+
+  init(data: [UInt8]) {
+    self.data = data
+  }
+
+  var size : Int {
+    return data.count
+  }
+
+  func appendUInt8(_ value: UInt8) {
+    data.append(value)
+  }
+
+  func appendUInt(_ value: UInt) {
+    appendUInt8(UInt8(value & 0xFF))
+    appendUInt8(UInt8((value >> 8) & 0xFF))
+  }
+
+  func appendInt(_ value: Int) {
+    appendUInt(UInt(bitPattern: value))
+  }
+
+  func appendUInt32(_ value: UInt32) {
+    appendUInt8(UInt8(value & 0xFF))
+    appendUInt8(UInt8((value >> 8) & 0xFF))
+    appendUInt8(UInt8((value >> 16) & 0xFF))
+    appendUInt8(UInt8((value >> 24) & 0xFF))
+  }
+
+  func appendInt32(_ value: Int32) {
+    appendUInt32(UInt32(bitPattern: value))
+  }
+
+  func appendString(_ string: String) {
+    appendInt(string.utf8.count)
+    data.append(contentsOf: string.utf8)
+  }
+
+  func readUInt8() -> UInt8? {
+    guard !data.isEmpty else {
+      return nil
+    }
+    let value = data[0]
+    data.removeFirst()
+    return value
+  }
+
+  func readUInt() -> UInt? {
+    let one = readUInt8()
+    let two = readUInt8()
+    guard let one = one, let two = two else {
+      return nil
+    }
+    return UInt(one) | UInt(two) << 8
+  }
+
+  func readInt() -> Int? {
+    guard let value = readUInt() else {
+      return nil
+    }
+    return Int(bitPattern: value)
+  }
+
+  func readUInt32() -> UInt32? {
+    let one = readUInt8()
+    let two = readUInt8()
+    let three = readUInt8()
+    let four = readUInt8()
+    guard let one = one, let two = two, let three = three, let four = four else {
+      return nil
+    }
+    return UInt32(one) | UInt32(two) << 8 | UInt32(three) << 16 | UInt32(four) << 24
+  }
+
+  func readInt32() -> Int32? {
+    guard let value = readUInt32() else {
+      return nil
+    }
+    return Int32(bitPattern: value)
+  }
+
+  func readString() -> String? {
+    guard data.count >= 4 else {
+      return nil
+    }
+
+    guard let length = readInt(), data.count >= length else {
+      return nil
+    }
+
+    let string = String(decoding: data[0..<Int(length)], as: UTF8.self)
+    data.removeFirst(Int(length))
+    return string
   }
 }

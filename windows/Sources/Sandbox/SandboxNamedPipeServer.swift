@@ -17,13 +17,10 @@ public class SandboxNamedPipeServer: NamedPipeServer {
     com = nil
   }
 
-  public override func onMessage(_ str: String) -> Bool {
-    let message = PipeMessages.fromString(str)
+  public override func onMessage(_ data: [UInt8]) -> Bool {
+    let message = PipeMessages.fromBytes(data)
     guard let message = message else {
-      print("Unknown pipe message")
-      #if DEBUG
-        fatalError("Unknown pipe message: \(str)")
-      #endif
+      print("Failed to parse message")
       return true
     }
 
@@ -49,7 +46,7 @@ public class SandboxNamedPipeServer: NamedPipeServer {
         // Initialize COM for the current thread
         com = Com()
       }
-      let result = SAPI_SPEAK(speak.text.wide, speak.flags)
+      SAPI_SPEAK(speak.text.wide, speak.flags)
     }
     return false
   }
