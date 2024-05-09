@@ -17,7 +17,7 @@ public class SandboxNamedPipeServer: NamedPipeServer {
     com = nil
   }
 
-  public override func onMessage(_ data: [UInt8]) -> Bool {
+  public override func onMessage(_ data: [UInt16]) -> Bool {
     let message = PipeMessages.fromBytes(data)
     guard let message = message else {
       print("Failed to parse message")

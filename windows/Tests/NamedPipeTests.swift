@@ -29,8 +29,8 @@ class TestNamedPipeServer: NamedPipeServer {
     try super.init(pipeName: self.pipeName)
   }
 
-  override func onMessage(_ data: [UInt8]) -> Bool {
-    let message = String(decoding: data, as: UTF8.self)
+  override func onMessage(_ data: [UInt16]) -> Bool {
+    let message = String(decoding: data, as: UTF16.self)
 
     if message == "exit" {
       return true

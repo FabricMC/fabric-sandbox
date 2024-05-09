@@ -6,7 +6,7 @@ import SandboxTestCpp
 class SpeechCommand: Command {
   func execute(_ arguments: [String]) throws {
     let _ = Com()
-    let result: HRESULT = sapi_speak("Hello Fabric Sandbox.")
+    let result: HRESULT = sapi_speak("Hello Fabric, Sandbox.")
     guard result == S_OK else {
       print("Failed to speak")
       throw Win32Error("Failed to speak", result: result)
