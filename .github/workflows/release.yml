@@ -1,0 +1,29 @@
+name: build
+on: [pull_request, push]
+
+jobs:
+  build:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - uses: gradle/wrapper-validation-action@v2
+      - uses: microsoft/setup-msbuild@v1.1
+        with:
+          msbuild-architecture: x64
+      - uses: compnerd/gha-setup-swift@main
+        with:
+          github-repo: thebrowsercompany/swift-build
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          release-tag-name: 20240422.2
+          release-asset-name: installer-amd64.exe
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+      - run: dotnet tool install --global wix --version 5.0.0
+      - run: ./gradlew :windows:copyJniHeaders
+      - run: ./gradlew build publish --stacktrace
+        env:
+          MAVEN_URL: ${{ secrets.MAVEN_URL }}
+          MAVEN_USERNAME: ${{ secrets.MAVEN_USERNAME }}
+          MAVEN_PASSWORD: ${{ secrets.MAVEN_PASSWORD }}

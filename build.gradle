@@ -3,7 +3,8 @@ plugins {
 	id 'maven-publish'
 }
 
-version = "0.0.1"
+def ENV = System.getenv()
+version = "0.0.1" + (ENV.GITHUB_ACTIONS ? "" : "+local")
 group = project.maven_group
 
 base {
@@ -50,5 +51,14 @@ publishing {
 	}
 
 	repositories {
+		if (ENV.MAVEN_URL) {
+			maven {
+				url ENV.MAVEN_URL
+				credentials {
+					username ENV.MAVEN_USERNAME
+					password ENV.MAVEN_PASSWORD
+				}
+			}
+		}
 	}
 }
