@@ -1,8 +1,11 @@
 name: build
-on: [pull_request, push]
+on: [workflow_dispatch] # Manual trigger
+
+permissions:
+  contents: write
 
 jobs:
-  build:
+  release:
     runs-on: windows-2022
     steps:
       - uses: actions/checkout@v4
