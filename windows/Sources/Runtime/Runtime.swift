@@ -38,6 +38,10 @@ public func speak(text: String, flags: UInt32) {
   sendMessage(.speak(Speak(text: text, flags: flags)))
 }
 
+public func speakSkip() {
+  sendMessage(.speakSkip)
+}
+
 public func processDetach() {
   // Disconnect and close the pipe client
   pipeClient = nil

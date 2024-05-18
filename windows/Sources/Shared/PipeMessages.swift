@@ -39,6 +39,7 @@ public enum PipeMessages {
   case clipCursor(Rect)
   case setCursorPos(Pos)
   case speak(Speak)
+  case speakSkip
 
   private var rawValue: UInt8 {
     switch self {
@@ -46,6 +47,7 @@ public enum PipeMessages {
     case .clipCursor: return 1
     case .setCursorPos: return 2
     case .speak: return 3
+    case .speakSkip: return 4
     }
   }
 
@@ -95,6 +97,8 @@ public enum PipeMessages {
         text: text,
         flags: flags
       ))
+    case 4:
+      return .speakSkip
     default:
       return nil
     }
@@ -120,6 +124,8 @@ public enum PipeMessages {
     case .speak(let speak):
       buffer.appendString(speak.text)
       buffer.appendUInt32(speak.flags)
+    case .speakSkip:
+      break
     }
     return buffer.data
   }

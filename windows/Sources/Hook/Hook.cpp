@@ -11,6 +11,9 @@
 using namespace std::string_literals;
 #pragma clang diagnostic ignored "-Wmicrosoft-cast"
 
+#define VTABLE_INDEX_SPEAK 20
+#define VTABLE_INDEX_SKIP 23
+
 // Workaround for GetVolumeInformationW not working in a UWP application
 // This is by creating a handle to a file on the drive and then using GetVolumeInformationByHandleW with that handle
 static BOOL (WINAPI* TrueGetVolumeInformationW)(LPCWSTR, LPWSTR, DWORD, LPDWORD, LPDWORD, LPDWORD, LPWSTR, DWORD) = GetVolumeInformationW;
@@ -102,14 +105,9 @@ HRESULT __stdcall SpeakPatch(ISpVoice* This, LPCWSTR pwcs, DWORD dwFlags, ULONG 
     return S_OK;
 }
 
-// Look away now, there has to be a better way to do this
-void* getTrueSpeak() {
-    CoInitializeEx(nullptr, 0);
-    void* spvoice;
-    CoCreateInstance(CLSID_SpVoice, nullptr, CLSCTX_ALL, IID_ISpVoice, &spvoice);
-    void** vtable = *(void***)spvoice;
-    //CoUninitialize(); // Is it that bad if we don't uninitialize?
-    return vtable[20]; // Woo magic numbers
+HRESULT __stdcall SpeakSkipPatch(ISpVoice* This, LPCWSTR *pItemType, long lItems, ULONG *pulNumSkipped) {
+    Runtime::speakSkip();
+    return S_OK;
 }
 
 BOOL WINAPI DllMain(HINSTANCE hinst, DWORD dwReason, LPVOID reserved) {
@@ -118,27 +116,44 @@ BOOL WINAPI DllMain(HINSTANCE hinst, DWORD dwReason, LPVOID reserved) {
     }
 
     if (dwReason == DLL_PROCESS_ATTACH) {
-        auto TrueSpeak = getTrueSpeak();
         Runtime::processAttach();
-        DetourRestoreAfterWith();
 
+        CoInitializeEx(nullptr, 0);
+        void* spvoice;
+        CoCreateInstance(CLSID_SpVoice, nullptr, CLSCTX_ALL, IID_ISpVoice, &spvoice);
+        auto vTable = *(void***)spvoice;
+        auto speak = vTable[VTABLE_INDEX_SPEAK];
+        auto skip = vTable[VTABLE_INDEX_SKIP];
+
+        DetourRestoreAfterWith();
         DetourTransactionBegin();
         DetourUpdateThread(GetCurrentThread());
         DetourAttach(&(PVOID&)TrueGetVolumeInformationW, GetVolumeInformationWPatch);
         DetourAttach(&(PVOID&)TrueClipCursor, ClipCursorPatch);
         DetourAttach(&(PVOID&)TrueSetCursorPos, SetCursorPosPatch);
-        DetourAttach(&(PVOID&)TrueSpeak, SpeakPatch);
+        DetourAttach(&(PVOID&)speak, SpeakPatch);
+        DetourAttach(&(PVOID&)skip, SpeakSkipPatch);
         DetourTransactionCommit();
+
+        // CoUninitialize();
     } else if (dwReason == DLL_PROCESS_DETACH) {
-        auto TrueSpeak = getTrueSpeak();
+        CoInitializeEx(nullptr, 0);
+        void* spvoice;
+        CoCreateInstance(CLSID_SpVoice, nullptr, CLSCTX_ALL, IID_ISpVoice, &spvoice);
+        auto vTable = *(void***)spvoice;
+        auto speak = vTable[VTABLE_INDEX_SPEAK];
+        auto skip = vTable[VTABLE_INDEX_SKIP];
+
         DetourTransactionBegin();
         DetourUpdateThread(GetCurrentThread());
         DetourDetach(&(PVOID&)TrueGetVolumeInformationW, GetVolumeInformationWPatch);
         DetourDetach(&(PVOID&)TrueClipCursor, ClipCursorPatch);
         DetourDetach(&(PVOID&)TrueSetCursorPos, SetCursorPosPatch);
-        DetourDetach(&(PVOID&)TrueSpeak, SpeakPatch);
+        DetourDetach(&(PVOID&)speak, SpeakPatch);
+        DetourDetach(&(PVOID&)skip, SpeakSkipPatch);
         DetourTransactionCommit();
-        Runtime::processDetach();
+        
+        // CoUninitialize();
     }
     return true;
 }

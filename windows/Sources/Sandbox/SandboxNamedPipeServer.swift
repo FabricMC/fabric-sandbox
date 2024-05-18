@@ -46,7 +46,17 @@ public class SandboxNamedPipeServer: NamedPipeServer {
         // Initialize COM for the current thread
         com = Com()
       }
+      print("Speaking SAPI message: \(speak.text)")
+      fflush(__acrt_iob_func(1))
       SAPI_SPEAK(speak.text.wide, speak.flags)
+    case .speakSkip:
+      if com == nil {
+        // Initialize COM for the current thread
+        com = Com()
+      }
+      print("Skipping SAPI message")
+      fflush(__acrt_iob_func(1))
+      SAPI_SKIP()
     }
     return false
   }
