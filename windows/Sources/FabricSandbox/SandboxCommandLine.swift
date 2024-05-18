@@ -28,7 +28,13 @@ class SandboxCommandLine {
     guard let first = first else {
       return nil
     }
-    return File(first)
+    let path = File(first)
+
+    if path.isSymbolicLink() {
+      return try path.resolveSymbolicLink()
+    }
+
+    return path
   }
 
   // Remove the last 2 slashes from the app path
