@@ -248,6 +248,43 @@ public class File: CustomStringConvertible {
     return true
   }
 
+  public func isSymbolicLink() -> Bool {
+    let path = self.path()
+    let attributes = GetFileAttributesW(path.wide)
+    return attributes != INVALID_FILE_ATTRIBUTES
+      && attributes & DWORD(FILE_ATTRIBUTE_REPARSE_POINT) != 0
+  }
+
+  public func resolveSymbolicLink() throws -> File {
+    guard isSymbolicLink() else {
+      return self
+    }
+
+    let handle = try FileHandle.create(
+      self, access: DWORD(GENERIC_READ), shareMode: DWORD(FILE_SHARE_READ),
+      creationDisposition: DWORD(OPEN_EXISTING),
+      flagsAndAttributes: DWORD(FILE_ATTRIBUTE_NORMAL | FILE_FLAG_BACKUP_SEMANTICS))
+
+    var buffer = [WCHAR](repeating: 0, count: Int(MAX_PATH))
+    let length = GetFinalPathNameByHandleW(handle.handle, &buffer, DWORD(MAX_PATH), DWORD(0))
+
+    guard length != 0 else {
+      throw win32Error("GetFinalPathNameByHandleW")
+    }
+
+    return File(String(decodingCString: buffer, as: UTF16.self))
+  }
+
+  // Note: The user must be elevated or have developer mode enabled to create symbolic links.
+  public func createSymbolicLink(to: File, isDirectory: Bool = false) throws {
+    let fromPath = self.path().wide
+    let toPath = to.path().wide
+    let flags = DWORD(isDirectory ? SYMBOLIC_LINK_FLAG_DIRECTORY : 0) | DWORD(SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE)
+    guard CreateSymbolicLinkW(fromPath, toPath, flags) != 0 else {
+      throw win32Error("CreateSymbolicLinkW")
+    }
+  }
+
   public func equals(_ other: File) -> Bool {
     return self.parts == other.parts
   }
