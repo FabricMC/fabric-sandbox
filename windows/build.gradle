@@ -99,13 +99,13 @@ tasks.register("clean", Exec) {
 tasks.register("swiftFormat", Exec) {
     inputs.dir file("Sources")
     inputs.dir file("Tests")
-    commandLine "swift", "run", "swift-format", "format", "-r", "-p", "-i", "Sources/", "Tests/"
+    commandLine "swift-format", "format", "-r", "-p", "-i", "Sources/", "Tests/"
     group "swift"
 }
 
 tasks.register("swiftLint", Exec) {
     inputs.dir file("Sources")
     inputs.dir file("Tests")
-    commandLine "swift", "run", "swift-format", "lint", "-r", "-p", "Sources/", "Tests/"
+    commandLine "swift-format", "lint", "-r", "-p", "Sources/", "Tests/"
     group "swift"
 }
