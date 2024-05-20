@@ -67,11 +67,52 @@ struct CommandLineTests {
     expectContains(commandLine, ["arg1", "arg2"])
   }
 
+  @Test func resolveSymlinkApplication() throws {
+    let tempDir = try File.getTempDirectory().randomChild()
+    try tempDir.createDirectory()
+    defer { try! tempDir.delete() }
+
+    let link = tempDir.child("link.exe")
+    let target = tempDir.child("target.exe")
+    try target.touch()
+
+    try link.createSymbolicLink(to: target)
+
+    let commandLine = try processCommandLine([], applicationName: link.path())
+    expectContains(commandLine, [target.path()])
+  }
+
+  @Test func rewriteRemapClasspathFile() throws {
+    let tempDir = try File.getTempDirectory().randomChild()
+    try tempDir.createDirectory()
+    defer { try! tempDir.delete() }
+
+    let remapClasspath = tempDir.child("remapClasspath.txt")
+    let remapEntries = (0..<5).map { i in tempDir.child("file\(i).jar") }
+    try remapEntries.forEach { try $0.touch() }
+    try remapClasspath.writeString(remapEntries.map{$0.path()}.joined(separator: ";"))
+
+    let sandboxRoot = tempDir.child("sandbox")
+    let sandboxRemapClasspathFile = sandboxRoot.child(".remapClasspath").child("remapClasspath.txt")
+
+    let commandLine = try processCommandLine(["-Dfabric.remapClasspathFile=\(remapClasspath.path())"], sandboxRoot: sandboxRoot)
+    expectContains(commandLine, ["-Dfabric.remapClasspathFile=\(sandboxRemapClasspathFile.path())"])
+
+    let sandboxRemapEntries = try sandboxRemapClasspathFile.readString().split(separator: ";").map { File(String($0)) }
+    #expect(sandboxRemapEntries.count == remapEntries.count)
+
+    for entry in sandboxRemapEntries {
+      #expect(entry.isChild(of: sandboxRoot))
+      #expect(entry.exists())
+    }
+  }
+
   private func processCommandLine(
     _ args: [String], dotMinecraftDir: File = File("C:/.minecraft"),
-    sandboxRoot: File = File("S:")
+    sandboxRoot: File = File("S:"),
+    applicationName: String = "java"
   ) throws -> [String] {
-    let sandboxCommandLine = SandboxCommandLine(["java", "-Dtest"] + args)
+    let sandboxCommandLine = SandboxCommandLine([applicationName, "-Dtest"] + args)
     return try sandboxCommandLine.getSandboxArgs(
       dotMinecraftDir: dotMinecraftDir, sandboxRoot: sandboxRoot, namedPipePath: "C:/namedPipePath"
     )
