@@ -272,7 +272,9 @@ public class File: CustomStringConvertible {
       throw win32Error("GetFinalPathNameByHandleW")
     }
 
-    return File(String(decodingCString: buffer, as: UTF16.self))
+    let string = String(decodingCString: buffer, as: UTF16.self)
+    // Remove the leading ?/
+    return File(String(string.dropFirst(4)))
   }
 
   // Note: The user must be elevated or have developer mode enabled to create symbolic links.
