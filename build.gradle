@@ -4,7 +4,7 @@ plugins {
 }
 
 def ENV = System.getenv()
-version = "0.0.1" + (ENV.GITHUB_ACTIONS ? "" : "+local")
+version = "0.0.2" + (ENV.GITHUB_ACTIONS ? "" : "+local")
 group = project.maven_group
 
 base {
