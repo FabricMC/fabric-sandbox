@@ -91,13 +91,24 @@ DWORD Win32FromHResult(HRESULT hr) {
     return ERROR_CAN_NOT_COMPLETE;
 }
 
-HRESULT SAPI_SPEAK(LPCWSTR text, DWORD dwFlags) {
-    ISpVoice* cpVoice;
-    HRESULT hr = CoCreateInstance(&CLSID_SpVoice, NULL, CLSCTX_ALL, &IID_ISpVoice, (void**)&cpVoice);
+ISpVoice* spVoice = NULL;
 
-    if (!SUCCEEDED(hr)) {
-       return hr;
+void SetupSAPI() {
+    if (spVoice != NULL) {
+        return;
     }
+    HRESULT hr = CoCreateInstance(&CLSID_SpVoice, NULL, CLSCTX_ALL, &IID_ISpVoice, (void**)&spVoice);
+    if (!SUCCEEDED(hr)) {
+        spVoice = NULL;
+    }
+}
 
-    return ISpVoice_Speak(cpVoice, text, dwFlags, NULL);
+HRESULT SAPI_SPEAK(LPCWSTR text, DWORD dwFlags) {
+    SetupSAPI();
+    return ISpVoice_Speak(spVoice, text, dwFlags, NULL);
+}
+
+HRESULT SAPI_SKIP() {
+    ULONG pulNumSkipped;
+    return ISpVoice_Skip(spVoice, L"Sentence", 0x7fffffff, &pulNumSkipped);
 }

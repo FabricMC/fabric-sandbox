@@ -48,4 +48,13 @@ struct PipeMessagesTests {
         #expect(messageSpeak.text == "Hello, world!")
         #expect(messageSpeak.flags == 1)
     }
+
+    @Test func speakSkip() {
+        let bytes = PipeMessages.speakSkip.toBytes()
+        let message = PipeMessages.fromBytes(bytes)!
+        guard case .speakSkip = message else {
+            Issue.record("Expected .speakSkip, got \(message)")
+            return
+        }
+    }
 }

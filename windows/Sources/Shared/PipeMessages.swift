@@ -1,3 +1,5 @@
+import WinSDK
+
 public struct Pos {
   public var x: Int32
   public var y: Int32
@@ -37,6 +39,7 @@ public enum PipeMessages {
   case clipCursor(Rect)
   case setCursorPos(Pos)
   case speak(Speak)
+  case speakSkip
 
   private var rawValue: UInt8 {
     switch self {
@@ -44,11 +47,12 @@ public enum PipeMessages {
     case .clipCursor: return 1
     case .setCursorPos: return 2
     case .speak: return 3
+    case .speakSkip: return 4
     }
   }
 
   // Convert the message from a byte array
-  public static func fromBytes(_ bytes: [UInt8]) -> PipeMessages? {
+  public static func fromBytes(_ bytes: [UInt16]) -> PipeMessages? {
     guard bytes.count >= 1 else {
       return nil
     }
@@ -93,6 +97,8 @@ public enum PipeMessages {
         text: text,
         flags: flags
       ))
+    case 4:
+      return .speakSkip
     default:
       return nil
     }
@@ -100,7 +106,7 @@ public enum PipeMessages {
 
   // Convert the message to a byte array
   // The first byte is the message type, the rest is the message data
-  public func toBytes() -> [UInt8] {
+  public func toBytes() -> [UInt16] {
     let buffer = ByteBuffer()
     buffer.appendUInt8(rawValue)
 
@@ -118,20 +124,21 @@ public enum PipeMessages {
     case .speak(let speak):
       buffer.appendString(speak.text)
       buffer.appendUInt32(speak.flags)
+    case .speakSkip:
+      break
     }
-
     return buffer.data
   }
 }
 
 private class ByteBuffer {
-  var data: [UInt8]
+  var data: [UInt16]
 
   init() {
     data = []
   }
 
-  init(data: [UInt8]) {
+  init(data: [UInt16]) {
     self.data = data
   }
 
@@ -140,7 +147,7 @@ private class ByteBuffer {
   }
 
   func appendUInt8(_ value: UInt8) {
-    data.append(value)
+    data.append(UInt16(value))
   }
 
   func appendUInt(_ value: UInt) {
@@ -165,7 +172,7 @@ private class ByteBuffer {
 
   func appendString(_ string: String) {
     appendInt(string.utf8.count)
-    data.append(contentsOf: string.utf8)
+    data.append(contentsOf: string.utf16)
   }
 
   func readUInt8() -> UInt8? {
@@ -174,7 +181,7 @@ private class ByteBuffer {
     }
     let value = data[0]
     data.removeFirst()
-    return value
+    return UInt8(value)
   }
 
   func readUInt() -> UInt? {
@@ -212,15 +219,15 @@ private class ByteBuffer {
   }
 
   func readString() -> String? {
-    guard data.count >= 4 else {
+    guard let length = readInt() else {
       return nil
     }
 
-    guard let length = readInt(), data.count >= length else {
+    guard data.count >= length else {
       return nil
     }
 
-    let string = String(decoding: data[0..<Int(length)], as: UTF8.self)
+    let string = String(decoding: data[0..<Int(length)], as: UTF16.self)
     data.removeFirst(Int(length))
     return string
   }

@@ -46,3 +46,5 @@ BOOL _IsWindows10OrGreater();
 DWORD Win32FromHResult(HRESULT hr);
 
 HRESULT SAPI_SPEAK(LPCWSTR text, DWORD dwFlags);
+
+HRESULT SAPI_SKIP();
