@@ -1,4 +1,4 @@
-#include "WinSdkExtras.h"
+#include "WinSDKExtras.h"
 
 #include <userenv.h>
 #include <VersionHelpers.h>
@@ -65,7 +65,7 @@ DWORD _SECURITY_MAX_SID_SIZE() {
 }
 
 LPWCH _CASTSID(PSID pSid) {
-    return (LPWCH)pSid;
+    return static_cast<LPWCH>(pSid);
 }
 
 LPPROC_THREAD_ATTRIBUTE_LIST allocateAttributeList(size_t size) {
