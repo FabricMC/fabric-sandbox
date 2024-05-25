@@ -120,6 +120,14 @@ import WindowsUtils
       ["mouseMovements", "-Dsandbox.namedPipe=\(server.path)"], namedPipe: server)
     #expect(exitCode == 0)
   }
+
+  @Test func testSpeech() throws {
+    let server = try SandboxNamedPipeServer(
+      pipeName: "\\\\.\\pipe\\FabricSandbox" + randomString(length: 10))
+    let (exitCode, output) = try runIntergration(["speech"], namedPipe: server)
+    #expect(exitCode == 0)
+    #expect(output == "Spoke")
+  }
 }
 func runIntergration(
   _ args: [String], capabilities: [SidCapability] = [], filePermissions: [FilePermission] = [],
@@ -164,14 +172,19 @@ func runIntergration(
       accessPermissions: [.genericRead, .genericExecute])
   }
 
+  var commandLine = [testExecutable.path()] + args
+
   if let namedPipe = namedPipe {
     try grantNamedPipeAccess(
       pipe: namedPipe, appContainer: container, accessPermissions: [.genericRead, .genericWrite])
+    if namedPipe is SandboxNamedPipeServer {
+      commandLine.append("-Dsandbox.namedPipe=\(namedPipe.path)")
+    }
   }
 
   let outputConsumer = TestOutputConsumer()
   let process = SandboxedProcess(
-    application: testExecutable, commandLine: [testExecutable.path()] + args,
+    application: testExecutable, commandLine: commandLine,
     workingDirectory: workingDirectory, container: container, outputConsumer: outputConsumer)
   let exitCode = try process.run()
   return (exitCode, outputConsumer.trimmed())
