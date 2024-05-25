@@ -11,7 +11,7 @@ class SpeakApi {
     SpeakApi(const SpeakApi& other);
 
     public:
-    HRESULT Speak(std::wstring text, DWORD dwFlags);
+    HRESULT Speak(std::string text, DWORD dwFlags);
     HRESULT Skip();
 
     private:

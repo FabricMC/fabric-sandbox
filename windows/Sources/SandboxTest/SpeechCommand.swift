@@ -9,15 +9,19 @@ class SpeechCommand: Command {
   private static let SPF_IS_NOT_XML = DWORD(1 << 4)
 
   func execute(_ arguments: [String]) throws {
-    let _ = Com()
+    CoInitializeEx(nil, 0)
+    defer {
+      CoUninitialize()
+    }
+
     var speak = SpeakApi()
     let flags: DWORD = SpeechCommand.SPF_ASYNC | SpeechCommand.SPF_IS_NOT_XML
-    let result = speak.Speak(std.wstring("Hello Fabric, Sandbox. This is a long message that will get cut off".wide), flags)
+    let result = speak.Speak(std.string("Hello Fabric, Sandbox. This is a long message that will get cut off"), flags)
     guard result == S_OK else {
        throw Win32Error("Failed to speak", result: result)
     }
 
-    Sleep(1500)
+    Sleep(2000)
 
     speak.Skip()
 

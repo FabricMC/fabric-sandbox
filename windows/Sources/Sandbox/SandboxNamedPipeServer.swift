@@ -54,16 +54,19 @@ public class SandboxNamedPipeServer: NamedPipeServer {
 }
 
 private class SpeakService {
-  let com: Com
   var speakApi: SpeakApi
 
   init() {
-    com = Com()
+    CoInitializeEx(nil, 0)
     speakApi = SpeakApi()
   }
 
+  deinit {
+    CoUninitialize()
+  }
+
   func Speak(_ text: String, _ flags: UInt32) {
-    speakApi.Speak(std.wstring(text.wide), flags)
+    speakApi.Speak(std.string(text), flags)
   }
 
   func Skip() {

@@ -1,25 +1,37 @@
 #include "SpeakApi.h"
 
 #include <atlbase.h>
+#include <atlconv.h>
 #include <sapi.h>
+
+#include <iostream>
 
 class SpeakApi::Impl {
     public:
+    Impl() {
+        auto result = spVoice.CoCreateInstance(CLSID_SpVoice);
+        if (!SUCCEEDED(result)) {
+            std::cout << "Failed to create ISpVoice instance" << std::endl;
+            throw std::runtime_error("Failed to create ISpVoice instance");
+        }
+    }
+
     CComPtr<ISpVoice> spVoice;
 };
 
 SpeakApi::SpeakApi(): pImpl{std::make_shared<Impl>()} {
-    pImpl->spVoice.CoCreateInstance(CLSID_SpVoice);
 }
 
 SpeakApi::~SpeakApi() {
 }
 
 SpeakApi::SpeakApi(const SpeakApi& other): pImpl{other.pImpl} {
+    std::cout << "Copy constructor" << std::endl;
 }
 
-HRESULT SpeakApi::Speak(std::wstring text, DWORD dwFlags) {
-    return pImpl->spVoice->Speak(text.c_str(), dwFlags, NULL);
+HRESULT SpeakApi::Speak(std::string text, DWORD dwFlags) {
+    CA2W textw(text.c_str());
+    return pImpl->spVoice->Speak(textw, dwFlags, NULL);
 }
 
 HRESULT SpeakApi::Skip() {
