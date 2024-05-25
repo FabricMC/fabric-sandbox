@@ -3,15 +3,13 @@
 #include <atlbase.h>
 #include <atlconv.h>
 #include <sapi.h>
-
-#include <iostream>
+#include <stdexcept>
 
 class SpeakApi::Impl {
     public:
     Impl() {
         auto result = spVoice.CoCreateInstance(CLSID_SpVoice);
         if (!SUCCEEDED(result)) {
-            std::cout << "Failed to create ISpVoice instance" << std::endl;
             throw std::runtime_error("Failed to create ISpVoice instance");
         }
     }
@@ -26,7 +24,6 @@ SpeakApi::~SpeakApi() {
 }
 
 SpeakApi::SpeakApi(const SpeakApi& other): pImpl{other.pImpl} {
-    std::cout << "Copy constructor" << std::endl;
 }
 
 HRESULT SpeakApi::Speak(std::string text, DWORD dwFlags) {
