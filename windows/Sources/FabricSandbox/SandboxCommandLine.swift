@@ -28,7 +28,13 @@ class SandboxCommandLine {
     guard let first = first else {
       return nil
     }
-    return File(first)
+    let path = File(first)
+
+    if path.isSymbolicLink() {
+      return try path.resolveSymbolicLink()
+    }
+
+    return path
   }
 
   // Remove the last 2 slashes from the app path
@@ -89,6 +95,11 @@ class SandboxCommandLine {
     var foundVersionType = false
     let isDevEnv = isDevEnv()
 
+    // Set the application path, this will resolve the path to the correct executable if it is a symlink.
+    if let appPath = try getApplicationPath() {
+      args[0] = appPath.path()
+    }
+
     for i in 0..<args.count {
       if args[i] == "net.fabricmc.sandbox.Main" {
         // Replace the main class with the runtime entrypoint
@@ -97,9 +108,6 @@ class SandboxCommandLine {
         // Rewrite the classpath to ensure that all of the entries are within the sandbox.
         args[i + 1] = try rewriteClasspath(
           args[i + 1], dotMinecraftDir: dotMinecraftDir, sandboxRoot: sandboxRoot)
-      } else if args[i].starts(with: "-D") && jvmArgsIndex < 0 {
-        // Find the first JVM argument, so we can insert our own at the same point.
-        jvmArgsIndex = i
       } else if args[i] == "--versionType" {
         // Prefix the version type with "Sandbox", so it is clear that the game is running in a sandbox.
         foundVersionType = true
@@ -114,7 +122,16 @@ class SandboxCommandLine {
       } else if args[i] == "--assetsDir" && !isDevEnv {
         // Replace the assets directory with the sandbox assets directory, in a dev env the assets dir will be granted read access.
         args[i + 1] = sandboxRoot.child("assets").path()
+      } else if args[i].starts(with: "-Dfabric.remapClasspathFile=") {
+          // Rewrite the remap classpath file to ensure that all of the entries are within the sandbox.
+          let file = File(String(args[i].dropFirst("-Dfabric.remapClasspathFile=".count)))
+          args[i] = "-Dfabric.remapClasspathFile=\(try rewriteRemapClasspathFile(file, sandboxRoot: sandboxRoot).path())"
       }
+
+      if args[i].starts(with: "-D") && jvmArgsIndex < 0 {
+        // Find the first JVM argument, so we can insert our own at the same point.
+        jvmArgsIndex = i
+      } 
 
       for prop in propsToRewrite {
         let prefix = "-D\(prop)="
@@ -204,5 +221,35 @@ class SandboxCommandLine {
       }
     }
     return newClasspath.joined(separator: ";")
+  }
+
+  func rewriteRemapClasspathFile(_ classPathFile: File, sandboxRoot: File) throws -> File {
+    let entries = try classPathFile.readString().split(separator: ";").map { File($0.trimmed()) }
+    let classpathDir = sandboxRoot.child(".remapClasspath")
+    try classpathDir.delete()
+
+    var newEntries: [File] = []
+
+    for entry in entries {
+      guard entry.exists() else {
+        logger.warning("Remap classpath entry does not exist: \(entry)")
+        continue
+      }
+
+      if !entry.isChild(of: sandboxRoot) {
+        try classpathDir.createDirectory()
+
+        let target = classpathDir.child(entry.name())
+        logger.debug("Copying remap classpath entry to sandbox: \(entry.path()) -> \(target.path())")
+        try entry.copy(to: target)
+        newEntries.append(target)
+      } else {
+        newEntries.append(entry)
+      }
+    }
+
+    let newClasspathFile = classpathDir.child("remapClasspath.txt")
+    try newClasspathFile.writeString(newEntries.map { $0.path() }.joined(separator: ";"))
+    return newClasspathFile
   }
 }

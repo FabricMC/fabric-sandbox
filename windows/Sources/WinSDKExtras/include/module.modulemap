@@ -1,0 +1,4 @@
+module WinSDKExtras {
+    header "WinSDKExtras.h"
+    export *
+}

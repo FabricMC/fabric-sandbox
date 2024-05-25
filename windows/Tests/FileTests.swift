@@ -156,4 +156,30 @@ struct FileTests {
     #expect(file.isChild(of: File("C:\\foo")))
     #expect(!file.isChild(of: File("C:\\buzz")))
   }
+
+  @Test func symbolicLinks() throws {
+    let tempDir = try File.getTempDirectory().randomChild()
+    try tempDir.createDirectory()
+    defer { try! tempDir.delete() }
+
+    let link = tempDir.child("link.txt")
+    let target = tempDir.child("target.txt")
+
+    try target.writeString("Hello, World!")
+
+    #expect(!link.isSymbolicLink())
+    #expect(!target.isSymbolicLink())
+
+    try link.createSymbolicLink(to: target)
+
+    #expect(link.isSymbolicLink())
+    #expect(!target.isSymbolicLink())
+
+    let readStr = try target.readString()
+    #expect(readStr == "Hello, World!")
+
+    #expect(try link.resolveSymbolicLink().name() == target.name())
+    // Test that resolving a non-link returns the same file
+    #expect(try target.resolveSymbolicLink().name() == target.name())
+  }
 }

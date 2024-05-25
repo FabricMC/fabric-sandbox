@@ -32,12 +32,14 @@ let package = Package(
         ),
         // A C library containing additional Windows SDK functions that arent included in the default WinSDK module
         .target(
-            name: "WinSDKExtras"
+            name: "WinSDKExtras",
+            swiftSettings: [.interoperabilityMode(.Cxx)]
         ),
         // A collection of utility functions for the Windows platform
         .target(
             name: "WindowsUtils",
             dependencies: [ .target(name: "WinSDKExtras") ],
+            swiftSettings: [.interoperabilityMode(.Cxx)],
             linkerSettings: linkerSettings
         ),
         // Code shared between the sandbox and the runtime
@@ -59,12 +61,14 @@ let package = Package(
         .target(
             name: "Sandbox",
             dependencies: [ .target(name: "WinSDKExtras"), .target(name: "WindowsUtils"), .target(name: "Shared")],
+            swiftSettings: [.interoperabilityMode(.Cxx)],
             linkerSettings: linkerSettings
         ),
         // The Minecraft/Fabric specific parts of the sandbox
         .target(
             name: "FabricSandbox",
             dependencies: [ .target(name: "Jni"), .target(name: "WinSDKExtras"), .target(name: "WindowsUtils"), .target(name: "Sandbox"), .product(name: "Logging", package: "swift-log")],
+            swiftSettings: [.interoperabilityMode(.Cxx)],
             linkerSettings: linkerSettings
         ),
         // The swift code that is used in the sandboxed process, invoked via the hook
@@ -84,11 +88,13 @@ let package = Package(
         .executableTarget(
             name: "Packager",
             dependencies: [.target(name: "WinSDKExtras"), .target(name: "WindowsUtils"), .target(name: "Sandbox"), .product(name: "Logging", package: "swift-log")],
+            swiftSettings: [.interoperabilityMode(.Cxx)],
             linkerSettings: linkerSettings
         ),
         .testTarget(
             name: "FabricSandboxTests",
             dependencies: [ .target(name: "FabricSandbox"), .target(name: "WindowsUtils"), .product(name: "Testing", package: "swift-testing")],
+            swiftSettings: [.interoperabilityMode(.Cxx)],
             linkerSettings: linkerSettings
         ),
     ],
