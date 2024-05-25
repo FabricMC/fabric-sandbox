@@ -68,18 +68,14 @@ open class NamedPipeServer: Thread {
 
     // Read the messages
     while true {
-      var message = [WCHAR](repeating: 0, count: Int(bufferSize) / MemoryLayout<WCHAR>.size)
+      var message = [UInt16](repeating: 0, count: Int(bufferSize) / MemoryLayout<WCHAR>.size)
       var bytesRead: DWORD = 0
       let read = ReadFile(pipe, &message, bufferSize - 1, &bytesRead, nil)
       guard read else {
         break
       }
 
-      // Null terminate the message
-      message[Int(bytesRead)] = 0
-
-      let text = String(decodingCString: message, as: UTF16.self)
-      if onMessage(text) {
+      if onMessage(message) {
         break
       }
     }
@@ -89,7 +85,7 @@ open class NamedPipeServer: Thread {
   }
 
   // Receives a message from the client and returns whether the server should stop
-  open func onMessage(_ message: String) -> Bool {
+  open func onMessage(_ message: [UInt16]) -> Bool {
     return false
   }
 }
@@ -125,13 +121,16 @@ public class NamedPipeClient {
     CloseHandle(pipe)
   }
 
-  public func send(_ text: String) throws {
-    let message = text.wide
+  public func sendBytes(_ bytes: [UInt16]) throws {
     var bytesWritten = DWORD(0)
     let write = WriteFile(
-      pipe, message, DWORD(message.count * MemoryLayout<WCHAR>.size), &bytesWritten, nil)
+      pipe, bytes, DWORD(bytes.count * MemoryLayout<UInt16>.size), &bytesWritten, nil)
     guard write else {
       throw Win32Error("WriteFile")
     }
+  }
+
+  public func send(_ text: String) throws {
+    try sendBytes(text.wide)
   }
 }

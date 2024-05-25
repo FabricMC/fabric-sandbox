@@ -1,6 +1,7 @@
 @_spi(Experimental) import Testing
 import WinSDK
 import WindowsUtils
+import FabricSandbox
 
 @Suite struct NamedPipeTests {
   @Test func namedPipe() throws {
@@ -29,7 +30,8 @@ class TestNamedPipeServer: NamedPipeServer {
     try super.init(pipeName: self.pipeName)
   }
 
-  override func onMessage(_ message: String) -> Bool {
+  override func onMessage(_ data: [UInt16]) -> Bool {
+    let message = String(decodingCString: data, as: UTF16.self).trimmed()
     if message == "exit" {
       return true
     }
