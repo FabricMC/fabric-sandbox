@@ -82,6 +82,8 @@ import WindowsUtils
     server.waitForNextMessage()
 
     let receivedMessage = server.lastMessage ?? ""
+    print("Received message: \(receivedMessage.count)")
+    print("Expected message: \("Hello, World!".count)")
     #expect(receivedMessage == "Hello, World!")
   }
 
@@ -186,14 +188,7 @@ class TestOutputConsumer: OutputConsumer {
   }
 
   func trimmed() -> String {
-    // Remove leading and trailing whitespace without using Foundation
-    return String(
-      output
-        .drop(while: { $0.isWhitespace })
-        .reversed()
-        .drop(while: { $0.isWhitespace })
-        .reversed()
-    )
+    return output.trimmed()
   }
 }
 private func findSwiftRuntimeDirectory() throws -> File {

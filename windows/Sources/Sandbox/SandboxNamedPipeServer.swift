@@ -1,19 +1,23 @@
 import Shared
 import WinSDK
 import WindowsUtils
+import WinSDKExtras
+import CxxStdlib
 
 // A named pipe server that listens for messages from the sandbox
 // and performs the requested privileged operations
 
 public class SandboxNamedPipeServer: NamedPipeServer {
+  private var speech: Speech? = nil
+
   public override init(pipeName: String) throws {
     try super.init(pipeName: pipeName)
   }
 
-  public override func onMessage(_ message: String) -> Bool {
-    let message = PipeMessages.fromString(message)
+  public override func onMessage(_ data: [UInt16]) -> Bool {
+    let message = PipeMessages.fromBytes(data)
     guard let message = message else {
-      print("Unknown pipe message")
+      print("Failed to parse message")
       return true
     }
 
@@ -34,7 +38,38 @@ public class SandboxNamedPipeServer: NamedPipeServer {
       }
     case .setCursorPos(let pos):
       SetCursorPos(pos.x, pos.y)
+    case .speak(let speak):
+      if speech == nil {
+        speech = Speech()
+      }
+      speech!.Speak(speak.text, speak.flags)
+    case .speakSkip:
+      if speech == nil {
+        speech = Speech()
+      }
+      speech!.Skip()
     }
     return false
+  }
+}
+
+private class Speech {
+  var speakApi: SpeakApi
+
+  init() {
+    CoInitializeEx(nil, 0)
+    speakApi = SpeakApi()
+  }
+
+  deinit {
+    CoUninitialize()
+  }
+
+  func Speak(_ text: String, _ flags: UInt32) {
+    speakApi.Speak(std.string(text), flags)
+  }
+
+  func Skip() {
+    speakApi.Skip()
   }
 }
