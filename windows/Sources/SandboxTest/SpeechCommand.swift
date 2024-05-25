@@ -1,6 +1,7 @@
 import WinSDK
 import WindowsUtils
 import WinSDKExtras
+import CxxStdlib
 
 // Use the win32 Speech API to convert text to speech
 class SpeechCommand: Command {
@@ -9,17 +10,17 @@ class SpeechCommand: Command {
 
   func execute(_ arguments: [String]) throws {
     let _ = Com()
+    var speak = SpeakApi()
     let flags: DWORD = SpeechCommand.SPF_ASYNC | SpeechCommand.SPF_IS_NOT_XML
-    var text = "Hello Fabric, Sandbox.".wide
-    // let result = SAPI_SPEAK("Hello Fabric, Sandbox.".wide, flags)
-    // guard result == S_OK else {
-    //   print("Failed to speak")
-    //   throw Win32Error("Failed to speak", result: result)
-    // }
+    let result = speak.Speak(std.wstring("Hello Fabric, Sandbox. This is a long message that will get cut off".wide), flags)
+    guard result == S_OK else {
+       throw Win32Error("Failed to speak", result: result)
+    }
 
     Sleep(1500)
 
+    speak.Skip()
+
     print("Spoke")
-    fflush(__acrt_iob_func(1))
   }
 }

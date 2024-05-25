@@ -2,19 +2,16 @@ import Shared
 import WinSDK
 import WindowsUtils
 import WinSDKExtras
+import CxxStdlib
 
 // A named pipe server that listens for messages from the sandbox
 // and performs the requested privileged operations
 
 public class SandboxNamedPipeServer: NamedPipeServer {
-  var com: Com? = nil
+  private var speakService: SpeakService? = nil
 
   public override init(pipeName: String) throws {
     try super.init(pipeName: pipeName)
-  }
-
-  deinit {
-    com = nil
   }
 
   public override func onMessage(_ data: [UInt16]) -> Bool {
@@ -42,22 +39,34 @@ public class SandboxNamedPipeServer: NamedPipeServer {
     case .setCursorPos(let pos):
       SetCursorPos(pos.x, pos.y)
     case .speak(let speak):
-      if com == nil {
-        // Initialize COM for the current thread
-        com = Com()
+      if speakService == nil {
+        speakService = SpeakService()
       }
-      print("Speaking SAPI message: \(speak.text)")
-      fflush(__acrt_iob_func(1))
-      SAPI_SPEAK(speak.text.wide, speak.flags)
+      speakService!.Speak(speak.text, speak.flags)
     case .speakSkip:
-      if com == nil {
-        // Initialize COM for the current thread
-        com = Com()
+      if speakService == nil {
+        speakService = SpeakService()
       }
-      print("Skipping SAPI message")
-      fflush(__acrt_iob_func(1))
-      SAPI_SKIP()
+      speakService!.Skip()
     }
     return false
+  }
+}
+
+private class SpeakService {
+  let com: Com
+  var speakApi: SpeakApi
+
+  init() {
+    com = Com()
+    speakApi = SpeakApi()
+  }
+
+  func Speak(_ text: String, _ flags: UInt32) {
+    speakApi.Speak(std.wstring(text.wide), flags)
+  }
+
+  func Skip() {
+    speakApi.Skip()
   }
 }

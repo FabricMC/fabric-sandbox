@@ -44,7 +44,3 @@ LPPROC_THREAD_ATTRIBUTE_LIST allocateAttributeList(size_t dwAttributeCount);
 BOOL _IsWindows10OrGreater();
 
 DWORD Win32FromHResult(HRESULT hr);
-
-HRESULT SAPI_SPEAK(LPCWSTR text, DWORD dwFlags);
-
-HRESULT SAPI_SKIP();
