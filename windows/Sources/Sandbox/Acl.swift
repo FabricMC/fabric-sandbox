@@ -66,7 +66,7 @@ public func grantAccess(
     )
   }
   guard result == ERROR_SUCCESS else {
-    throw Win32Error("SetNamedSecurityInfoW", errorCode: result)
+    throw Win32Error("SetNamedSecurityInfoW '\(path)'", errorCode: result)
   }
 }
 public func grantNamedPipeAccess(
@@ -124,7 +124,7 @@ public func grantNamedPipeAccess(
     nil
   )
   guard result == ERROR_SUCCESS else {
-    throw Win32Error("SetNamedSecurityInfoW", errorCode: result)
+    throw Win32Error("SetSecurityInfo", errorCode: result)
   }
 }
 public enum AccessPermissions: DWORD {
