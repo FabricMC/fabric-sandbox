@@ -42,6 +42,9 @@ public class AppContainer {
     }
     */
 
+    // Fow now delete an existing container if it exists
+    let _ = _DeleteAppContainerProfile(name.wide)
+
     var capabilities = attributes.map { $0.sidAttributes }
     var sid: PSID? = nil
     let result = capabilities.withUnsafeMutableBufferPointer { capabilities in

@@ -2,12 +2,11 @@ import Jni
 import WinSDK
 
 @_cdecl("Java_net_fabricmc_sandbox_Main_nativeEntrypoint")
-public func entrypoint(env: UnsafeMutablePointer<JNIEnv>, clazz: jclass!) {
+public func entrypoint(jni: UnsafeMutablePointer<JNIEnv>, clazz: jclass!) {
   do {
     try FabricSandbox().run()
   } catch {
-    var jni = env.pointee
-    let runtimeException = jni.FindClass("java/lang/RuntimeException")!
-    let _ = jni.ThrowNew(runtimeException, "\(error)")
+    let runtimeException = jni.pointee.FindClass("java/lang/RuntimeException")!
+    let _ = jni.pointee.ThrowNew(runtimeException, "\(error)")
   }
 }
