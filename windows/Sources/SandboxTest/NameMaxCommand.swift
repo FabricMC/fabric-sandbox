@@ -8,17 +8,15 @@ class NameMaxCommand: Command {
     // GetVolumeInformationW is documented to be supported in UWP apps, but it doesn't work...
     let path = arguments.first!
     var maxComponentLength: DWORD = 0
-    let result = withUnsafeMutablePointer(to: &maxComponentLength) {
-      GetVolumeInformationW(
-        path.wide,
-        nil,
-        0,
-        nil,
-        $0,
-        nil,
-        nil,
-        0)
-    }
+    let result = GetVolumeInformationW(
+      path.wide,
+      nil,
+      0,
+      nil,
+      &maxComponentLength,
+      nil,
+      nil,
+      0)
     if result {
       print("Max component length: \(maxComponentLength)")
     } else {
@@ -45,17 +43,15 @@ class NameMaxCommand: Command {
     defer { CloseHandle(handle) }
 
     var maxComponentLength: DWORD = 0
-    let result = withUnsafeMutablePointer(to: &maxComponentLength) {
-      GetVolumeInformationByHandleW(
-        handle,
-        nil,
-        0,
-        nil,
-        $0,
-        nil,
-        nil,
-        0)
-    }
+    let result = GetVolumeInformationByHandleW(
+      handle,
+      nil,
+      0,
+      nil,
+      &maxComponentLength,
+      nil,
+      nil,
+      0)
     guard result else {
       throw Win32Error("GetVolumeInformationByHandleW")
     }

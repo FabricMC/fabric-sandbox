@@ -31,18 +31,16 @@ open class NamedPipeServer: Thread {
       nLength: DWORD(MemoryLayout<SECURITY_ATTRIBUTES>.size), lpSecurityDescriptor: security,
       bInheritHandle: false)
 
-    let pipe = withUnsafeMutablePointer(to: &securityAttributesValue) {
-      CreateNamedPipeW(
-        pipeName.wide,
-        DWORD(PIPE_ACCESS_DUPLEX),
-        DWORD(PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT),
-        DWORD(1),  // Only one client
-        bufferSize,
-        bufferSize,
-        DWORD(0),
-        $0
-      )
-    }
+    let pipe = CreateNamedPipeW(
+      pipeName.wide,
+      DWORD(PIPE_ACCESS_DUPLEX),
+      DWORD(PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT),
+      DWORD(1),  // Only one client
+      bufferSize,
+      bufferSize,
+      DWORD(0),
+      &securityAttributesValue
+    )
     guard pipe != INVALID_HANDLE_VALUE, let pipe = pipe else {
       throw Win32Error("CreateNamedPipeW")
     }

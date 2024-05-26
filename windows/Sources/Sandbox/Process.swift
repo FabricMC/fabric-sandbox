@@ -44,7 +44,7 @@ public class SandboxedProcess {
 
       var startupInfo = STARTUPINFOEXW(
         StartupInfo: STARTUPINFOW(),
-        lpAttributeList: procThreadAttributeList.ptr
+        lpAttributeList: procThreadAttributeList.attributeList
       )
       startupInfo.StartupInfo.dwFlags |= STARTF_USESTDHANDLES
       startupInfo.StartupInfo.cb = DWORD(MemoryLayout<STARTUPINFOEXW>.size)
@@ -58,11 +58,7 @@ public class SandboxedProcess {
       var readPipe: HANDLE? = nil
       var writePipe: HANDLE? = nil
 
-      var result = withUnsafeMutablePointer(to: &readPipe) { readPipe in
-        withUnsafeMutablePointer(to: &writePipe) { writePipe in
-          CreatePipe(readPipe, writePipe, &securityAttributes, 0)
-        }
-      }
+      var result = CreatePipe(&readPipe, &writePipe, &securityAttributes, 0)
 
       guard result, let readPipe = readPipe, let writePipe = writePipe else {
         throw Win32Error("CreatePipe")
@@ -131,9 +127,7 @@ public class SandboxedProcess {
 
           WaitForSingleObject(processInformation.hProcess, INFINITE)
           var exitCode: DWORD = 0
-          let _ = withUnsafeMutablePointer(to: &exitCode) {
-            GetExitCodeProcess(processInformation.hProcess, $0)
-          }
+          let _ = GetExitCodeProcess(processInformation.hProcess, &exitCode)
 
           try readThread.join()
           return Int(exitCode)

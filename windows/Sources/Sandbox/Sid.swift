@@ -62,10 +62,7 @@ public class Sid: CustomStringConvertible {
 
   func getSidString(_ sid: PSID) throws -> String {
     var sidString: LPWSTR? = nil
-
-    let result = withUnsafeMutablePointer(to: &sidString) {
-      ConvertSidToStringSidW(sid, $0)
-    }
+    let result = ConvertSidToStringSidW(sid, &sidString)
 
     guard result, let sidString = sidString else {
       throw Win32Error("ConvertSidToStringSidW")

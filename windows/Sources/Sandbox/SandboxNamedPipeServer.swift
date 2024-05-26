@@ -29,12 +29,10 @@ public class SandboxNamedPipeServer: NamedPipeServer {
         // Unclip the cursor when the rect is all 0s
         ClipCursor(nil)
       } else {
-        let rect = RECT(
+        var rect = RECT(
           left: LONG(rect.left), top: LONG(rect.top), right: LONG(rect.right),
           bottom: LONG(rect.bottom))
-        let _ = withUnsafePointer(to: rect) {
-          ClipCursor($0)
-        }
+        let _ = ClipCursor(&rect)
       }
     case .setCursorPos(let pos):
       SetCursorPos(pos.x, pos.y)

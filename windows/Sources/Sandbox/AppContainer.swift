@@ -35,24 +35,37 @@ public class AppContainer {
       try SidAndAttributes.createWithCapability(type: type)
     }
 
-    // Delete the existing profile if it exists, no need to check the result
-    let _ = _DeleteAppContainerProfile(name.wide)
+    /* TODO: Reuse an existing AppContainer, we need to take into account the capabilities
+    if let sid = getExisting(name) {
+      return AppContainer(
+        name: name, sid: sid, attributes: attributes, lpac: lpac, mutex: mutex)
+    }
+    */
 
     var capabilities = attributes.map { $0.sidAttributes }
     var sid: PSID? = nil
     let result = capabilities.withUnsafeMutableBufferPointer { capabilities in
-      withUnsafeMutablePointer(to: &sid) { sid in
-        _CreateAppContainerProfile(
+      _CreateAppContainerProfile(
           name.wide, name.wide, description.wide,
           capabilities.count > 0 ? capabilities.baseAddress : nil,
-          DWORD(capabilities.count), sid)
-      }
+          DWORD(capabilities.count), &sid)
     }
     guard result == S_OK, let sid = sid else {
       throw Win32Error("CreateAppContainerProfile", result: result)
     }
 
     return AppContainer(name: name, sid: Sid(sid), attributes: attributes, lpac: lpac, mutex: mutex)
+  }
+
+  private static func getExisting(_ name: String) -> Sid? {
+    var sid: PSID? = nil
+    let result = _DeriveAppContainerSidFromAppContainerName(name.wide, &sid)
+
+    guard result == S_OK, let sid = sid else {
+      return nil
+    }
+
+    return Sid(sid)
   }
 }
 

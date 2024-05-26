@@ -17,11 +17,9 @@ public func grantAccess(
 
   // Read the existing ACL
   var acl: PACL? = nil
-  var result = withUnsafeMutablePointer(to: &acl) {
-    GetNamedSecurityInfoW(
-      path.wide, SE_FILE_OBJECT, SECURITY_INFORMATION(DACL_SECURITY_INFORMATION), nil, nil, $0, nil,
+  var result = GetNamedSecurityInfoW(
+      path.wide, SE_FILE_OBJECT, SECURITY_INFORMATION(DACL_SECURITY_INFORMATION), nil, nil, &acl, nil,
       nil)
-  }
   guard result == ERROR_SUCCESS, let acl = acl else {
     throw Win32Error("GetNamedSecurityInfoW")
   }
@@ -42,9 +40,7 @@ public func grantAccess(
 
   // Add an entry to the ACL that grants the app container the specified access permissions
   var newAcl: PACL? = nil
-  result = withUnsafeMutablePointer(to: &newAcl) {
-    SetEntriesInAclW(1, &explicitAccess, acl, $0)
-  }
+  result = SetEntriesInAclW(1, &explicitAccess, acl, &newAcl)
   guard result == ERROR_SUCCESS, let newAcl = newAcl else {
     throw Win32Error("SetEntriesInAclW")
   }
@@ -80,11 +76,9 @@ public func grantNamedPipeAccess(
 
   // Read the existing ACL
   var acl: PACL? = nil
-  var result = withUnsafeMutablePointer(to: &acl) {
-    GetSecurityInfo(
-      handle, SE_KERNEL_OBJECT, SECURITY_INFORMATION(DACL_SECURITY_INFORMATION), nil, nil, $0, nil,
+  var result = GetSecurityInfo(
+      handle, SE_KERNEL_OBJECT, SECURITY_INFORMATION(DACL_SECURITY_INFORMATION), nil, nil, &acl, nil,
       nil)
-  }
   guard result == ERROR_SUCCESS, let acl = acl else {
     throw Win32Error("GetNamedSecurityInfoW")
   }
@@ -105,9 +99,7 @@ public func grantNamedPipeAccess(
 
   // Add an entry to the ACL that grants the app container the specified access permissions
   var newAcl: PACL? = nil
-  result = withUnsafeMutablePointer(to: &newAcl) {
-    SetEntriesInAclW(1, &explicitAccess, acl, $0)
-  }
+  result = SetEntriesInAclW(1, &explicitAccess, acl, &newAcl)
   guard result == ERROR_SUCCESS, let newAcl = newAcl else {
     throw Win32Error("SetEntriesInAclW")
   }

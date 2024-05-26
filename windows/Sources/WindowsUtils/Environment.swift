@@ -13,9 +13,7 @@ public func getEnvironmentVarible(_ name: String) throws -> String? {
 
   var buffer = [WCHAR](repeating: 0, count: Int(size))
 
-  size = buffer.withUnsafeMutableBufferPointer {
-    GetEnvironmentVariableW(name.wide, $0.baseAddress, DWORD(size))
-  }
+  size = GetEnvironmentVariableW(name.wide, &buffer, DWORD(size))
   guard size != 0 else {
     throw Win32Error("GetEnvironmentVariableW")
   }
