@@ -35,8 +35,12 @@ public class AppContainer {
       try SidAndAttributes.createWithCapability(type: type)
     }
 
-    // Delete the existing profile if it exists, no need to check the result
-    let _ = _DeleteAppContainerProfile(name.wide)
+    /* TODO: Reuse an existing AppContainer, we need to take into account the capabilities
+    if let sid = getExisting(name) {
+      return AppContainer(
+        name: name, sid: sid, attributes: attributes, lpac: lpac, mutex: mutex)
+    }
+    */
 
     var capabilities = attributes.map { $0.sidAttributes }
     var sid: PSID? = nil
@@ -51,6 +55,17 @@ public class AppContainer {
     }
 
     return AppContainer(name: name, sid: Sid(sid), attributes: attributes, lpac: lpac, mutex: mutex)
+  }
+
+  private static func getExisting(_ name: String) -> Sid? {
+    var sid: PSID? = nil
+    let result = _DeriveAppContainerSidFromAppContainerName(name.wide, &sid)
+
+    guard result == S_OK, let sid = sid else {
+      return nil
+    }
+
+    return Sid(sid)
   }
 }
 
