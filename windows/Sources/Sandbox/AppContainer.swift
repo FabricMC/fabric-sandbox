@@ -41,12 +41,10 @@ public class AppContainer {
     var capabilities = attributes.map { $0.sidAttributes }
     var sid: PSID? = nil
     let result = capabilities.withUnsafeMutableBufferPointer { capabilities in
-      withUnsafeMutablePointer(to: &sid) { sid in
-        _CreateAppContainerProfile(
+      _CreateAppContainerProfile(
           name.wide, name.wide, description.wide,
           capabilities.count > 0 ? capabilities.baseAddress : nil,
-          DWORD(capabilities.count), sid)
-      }
+          DWORD(capabilities.count), &sid)
     }
     guard result == S_OK, let sid = sid else {
       throw Win32Error("CreateAppContainerProfile", result: result)

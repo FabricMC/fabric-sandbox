@@ -9,9 +9,7 @@ public func getCommandLine() throws -> [String] {
   }
 
   var argc: Int32 = 0
-  let argv = withUnsafeMutablePointer(to: &argc) {
-    CommandLineToArgvW(commandLinePtr, $0)
-  }
+  let argv = CommandLineToArgvW(commandLinePtr, &argc)
   guard let argv = argv else {
     throw Win32Error("CommandLineToArgvW")
   }
