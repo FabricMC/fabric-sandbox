@@ -202,10 +202,10 @@ class SandboxCommandLine {
       if !source.isChild(of: dotMinecraftDir) {
         try classpathDir.createDirectory()
 
-        // Hack fix for dev envs, where build/classes/java/main and build/resources/main would be handled as the same entry.
         var name = source.name()
-        if source.parent()!.name() == "resources" {
-          name = "resources"
+        if source.isDirecotry() {
+          let hash = try Checksum.hex(source.path(), .md5)
+          name += "_" + hash.prefix(8)
         }
 
         // The classpath entry is not in the minecraft install dir, copy it to the sandbox.
