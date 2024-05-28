@@ -26,7 +26,7 @@ public class SandboxedProcess {
     self.searchPath = searchPath
   }
 
-  public func run() throws -> Int {
+  public func run() throws -> Int {      
     var securityAttributes = container?.attributes.map { $0.sidAttributes } ?? []
     return try securityAttributes.withUnsafeMutableBufferPointer { securityAttributes in
       var attributes: [ProcThreadAttribute] = []
@@ -42,98 +42,90 @@ public class SandboxedProcess {
 
       let procThreadAttributeList = try ProcThreadAttributeList(attributes: attributes)
 
-      var startupInfo = STARTUPINFOEXW(
-        StartupInfo: STARTUPINFOW(),
-        lpAttributeList: procThreadAttributeList.attributeList
-      )
-      startupInfo.StartupInfo.dwFlags |= STARTF_USESTDHANDLES
-      startupInfo.StartupInfo.cb = DWORD(MemoryLayout<STARTUPINFOEXW>.size)
-
       var securityAttributes = SECURITY_ATTRIBUTES(
         nLength: DWORD(MemoryLayout<SECURITY_ATTRIBUTES>.size),
         lpSecurityDescriptor: nil,
         bInheritHandle: true
       )
 
-      var readPipe: HANDLE? = nil
-      var writePipe: HANDLE? = nil
+      var readPipeHandle: HANDLE? = nil
+      var writePipeHandle: HANDLE? = nil
 
-      var result = CreatePipe(&readPipe, &writePipe, &securityAttributes, 0)
+      var result = CreatePipe(&readPipeHandle, &writePipeHandle, &securityAttributes, 0)
 
-      guard result, let readPipe = readPipe, let writePipe = writePipe else {
+      guard result, let readPipeHandle = readPipeHandle, let writePipeHandle = writePipeHandle else {
         throw Win32Error("CreatePipe")
       }
 
-      defer {
-        CloseHandle(readPipe)
-        CloseHandle(writePipe)
-      }
+      var readPipe: ProcessHandle? = ProcessHandle(readPipeHandle)
+      var writePipe: ProcessHandle? = ProcessHandle(writePipeHandle)
 
-      result = SetHandleInformation(readPipe, HANDLE_FLAG_INHERIT, 0)
+      result = SetHandleInformation(readPipe!.handle, HANDLE_FLAG_INHERIT, 0)
       guard result else {
         throw Win32Error("SetHandleInformation")
       }
 
-      startupInfo.StartupInfo.hStdOutput = writePipe
-      startupInfo.StartupInfo.hStdError = writePipe
+      var startupInfo = STARTUPINFOW()
+      startupInfo.dwFlags |= STARTF_USESTDHANDLES
+      startupInfo.cb = DWORD(MemoryLayout<STARTUPINFOEXW>.size)
+      startupInfo.hStdOutput = writePipe!.handle
+      startupInfo.hStdError = writePipe!.handle
+      var startupInfoEx = STARTUPINFOEXW(
+        StartupInfo: startupInfo,
+        lpAttributeList: procThreadAttributeList.attributeList
+      )
       return try createSandboxProcess(
-        readPipe: readPipe, writePipe: writePipe, startupInfo: &startupInfo)
+        readPipe: &readPipe, writePipe: &writePipe, startupInfo: &startupInfoEx)
     }
   }
 
   internal func createSandboxProcess(
-    readPipe: HANDLE, writePipe: HANDLE, startupInfo: inout STARTUPINFOEXW
+    readPipe: inout ProcessHandle?, writePipe: inout ProcessHandle?, startupInfo: inout STARTUPINFOEXW
   ) throws -> Int {
-    let commandLine = formatCommandLine(commandLine)
+    var commandLine = formatCommandLine(commandLine).wide
     fflush(stdout)
 
-    return try application.withCString(encodedAs: UTF16.self) { application throws in
-      return try commandLine.withCString(encodedAs: UTF16.self) { commandLine throws in
-        return try workingDirectory.withCString(encodedAs: UTF16.self) { workingDirectory throws in
-          var processInformation = PROCESS_INFORMATION()
-          let result = CreateProcessW(
-            searchPath ? nil : application,
-            UnsafeMutablePointer<WCHAR>(mutating: commandLine),  // This can mutate the string!!
-            nil,
-            nil,
-            true,  // inherit handles
-            DWORD(EXTENDED_STARTUPINFO_PRESENT | CREATE_SUSPENDED),
-            nil,
-            workingDirectory,
-            &startupInfo.StartupInfo,
-            &processInformation
-          )
-          guard result else {
-            throw Win32Error("CreateProcessW")
-          }
-
-          defer {
-            CloseHandle(processInformation.hProcess)
-            CloseHandle(processInformation.hThread)
-          }
-
-          let jobObject = JobObject()
-          try jobObject.killOnJobClose()
-          try jobObject.assignProcess(processInformation)
-
-          // The child process now owns the write end of the pipe, so close it
-          CloseHandle(writePipe)
-
-          let readThread = try ReadThread(readPipe: readPipe, outputConsumer: outputConsumer)
-          readThread.start()
-
-          // Now let the child process run
-          ResumeThread(processInformation.hThread)
-
-          WaitForSingleObject(processInformation.hProcess, INFINITE)
-          var exitCode: DWORD = 0
-          let _ = GetExitCodeProcess(processInformation.hProcess, &exitCode)
-
-          try readThread.join()
-          return Int(exitCode)
-        }
-      }
+    var processInformation = PROCESS_INFORMATION()
+    let result = CreateProcessW(
+      searchPath ? nil : application.wide,
+      &commandLine,
+      nil,
+      nil,
+      true,  // inherit handles
+      DWORD(EXTENDED_STARTUPINFO_PRESENT | CREATE_SUSPENDED),
+      nil,
+      workingDirectory.wide,
+      &startupInfo.StartupInfo,
+      &processInformation
+    )
+    guard result else {
+      throw Win32Error("CreateProcessW")
     }
+
+    defer {
+      CloseHandle(processInformation.hProcess)
+      CloseHandle(processInformation.hThread)
+    }
+
+    let jobObject = JobObject()
+    try jobObject.killOnJobClose()
+    try jobObject.assignProcess(processInformation)
+
+    // The child process now owns the write end of the pipe, so close it
+    writePipe = nil
+
+    let readThread = try ReadThread(readPipe: readPipe!, outputConsumer: outputConsumer)
+    readThread.start()
+
+    // Now let the child process run
+    ResumeThread(processInformation.hThread)
+
+    WaitForSingleObject(processInformation.hProcess, INFINITE)
+    var exitCode: DWORD = 0
+    let _ = GetExitCodeProcess(processInformation.hProcess, &exitCode)
+
+    try readThread.join()
+    return Int(exitCode)
   }
 }
 
@@ -159,10 +151,10 @@ class PrintOutputConsumer: OutputConsumer {
 }
 
 class ReadThread: Thread {
-  let readPipe: HANDLE
+  let readPipe: ProcessHandle
   let outputConsumer: OutputConsumer
 
-  init(readPipe: HANDLE, outputConsumer: OutputConsumer) throws {
+  init(readPipe: ProcessHandle, outputConsumer: OutputConsumer) throws {
     self.readPipe = readPipe
     self.outputConsumer = outputConsumer
     try super.init()
@@ -173,7 +165,7 @@ class ReadThread: Thread {
     var bytesRead: DWORD = 0
 
     while true {
-      let result = ReadFile(readPipe, &buffer, DWORD(buffer.count) - 1, &bytesRead, nil)
+      let result = ReadFile(readPipe.handle, &buffer, DWORD(buffer.count) - 1, &bytesRead, nil)
       guard result, bytesRead > 0 else {
         break
       }
@@ -183,5 +175,17 @@ class ReadThread: Thread {
       let text = String(decodingCString: buffer, as: UTF8.self)
       outputConsumer.consume(text)
     }
+  }
+}
+
+class ProcessHandle {
+  let handle: HANDLE
+
+  init(_ handle: HANDLE) {
+    self.handle = handle
+  }
+
+  deinit {
+    CloseHandle(handle)
   }
 }

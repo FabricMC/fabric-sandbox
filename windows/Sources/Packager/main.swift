@@ -138,6 +138,8 @@ func getOptions() throws -> Options {
   switch archStr {
   case "aarch64":
     arch = .arm64
+  case "arm64":
+    arch = .arm64
   case "x86_64":
     arch = .x64
   default:
