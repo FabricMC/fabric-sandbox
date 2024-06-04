@@ -53,6 +53,31 @@ import WindowsUtils
     #expect(output.contains("Hello, World!"))
   }
 
+  @Test func testReadFileWithDenyAccess() throws {
+    let tempDir = try createTempDir()
+    defer {
+      try! tempDir.delete()
+    }
+
+    let allowedFile = tempDir.child("allow.txt")
+    try allowedFile.writeString("Hello, World!")
+    let deniedFile = tempDir.child("deny.txt")
+    try deniedFile.writeString("Top secret!")
+
+    print(tempDir.path())
+
+    let (exitCode, output) = try runIntergration(
+      ["readFile", deniedFile.path()],
+      filePermissions: [
+        // Grant read access to the directory
+        FilePermission(path: tempDir, accessPermissions: [.genericRead]),
+        // Deny read access to the file
+        FilePermission(path: deniedFile, accessPermissions: [.genericAll], accessMode: .deny)
+      ])
+    #expect(exitCode == 0)
+    #expect(output.contains("Access is denied"))
+  }
+
   @Test func testRegistryCreate() throws {
     let (exitCode, output) = try runIntergration(["registry", "create"])
     #expect(exitCode == 0)
@@ -142,8 +167,9 @@ func runIntergration(
     capabilities: capabilities, lpac: lpac)
 
   for filePermission in filePermissions {
-    try grantAccess(
+    try setAccess(
       filePermission.path, appContainer: container,
+      accessMode: filePermission.accessMode,
       accessPermissions: filePermission.accessPermissions)
   }
 
@@ -192,6 +218,7 @@ func runIntergration(
 struct FilePermission {
   var path: File
   var accessPermissions: [AccessPermissions]
+  var accessMode: AccessMode = .grant
 }
 class TestOutputConsumer: OutputConsumer {
   var output = ""

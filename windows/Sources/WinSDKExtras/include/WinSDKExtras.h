@@ -44,3 +44,7 @@ LPPROC_THREAD_ATTRIBUTE_LIST allocateAttributeList(size_t dwAttributeCount);
 BOOL _IsWindows10OrGreater();
 
 DWORD Win32FromHResult(HRESULT hr);
+
+PSID SidFromAccessAllowedAce(LPVOID ace, DWORD sidStart);
+
+PSID SidFromAccessDeniedAce(LPVOID ace, DWORD sidStart);

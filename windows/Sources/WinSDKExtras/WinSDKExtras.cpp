@@ -87,3 +87,11 @@ DWORD Win32FromHResult(HRESULT hr) {
     // Not a Win32 HRESULT so return a generic error code.
     return ERROR_CAN_NOT_COMPLETE;
 }
+
+PSID SidFromAccessAllowedAce(LPVOID ace, DWORD sidStart) {
+    return &((ACCESS_ALLOWED_ACE*)ace)->SidStart;
+}
+
+PSID SidFromAccessDeniedAce(LPVOID ace, DWORD sidStart) {
+    return &((ACCESS_DENIED_ACE*)ace)->SidStart;
+}
