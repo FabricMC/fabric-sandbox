@@ -57,10 +57,10 @@ public class Sid: CustomStringConvertible {
   }
 
   public var description: String {
-    return (try? getSidString(value)) ?? "Invalid SID"
+    return (try? Sid.getSidString(value)) ?? "Invalid SID"
   }
 
-  func getSidString(_ sid: PSID) throws -> String {
+  static func getSidString(_ sid: PSID) throws -> String {
     var sidString: LPWSTR? = nil
     let result = ConvertSidToStringSidW(sid, &sidString)
 
