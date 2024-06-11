@@ -47,6 +47,8 @@ func copyDlls(_ packageDir: File, arch: Architecture, redistributables: [String:
     "swiftCore.dll",
     "swiftCRT.dll",
     "swiftSwiftOnoneSupport.dll",
+    "swift_RegexParser.dll",
+    "swift_StringProcessing.dll",
     "BlocksRuntime.dll",
     "vcruntime140.dll",
     "vcruntime140_1.dll",

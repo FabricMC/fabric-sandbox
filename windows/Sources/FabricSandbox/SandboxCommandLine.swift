@@ -100,6 +100,8 @@ class SandboxCommandLine {
       args[0] = appPath.path()
     }
 
+    var classpathMap: [String: String] = [:]
+
     for i in 0..<args.count {
       if args[i] == "net.fabricmc.sandbox.Main" {
         // Replace the main class with the runtime entrypoint
@@ -107,7 +109,7 @@ class SandboxCommandLine {
       } else if args[i] == "-classpath" || args[i] == "-cp" {
         // Rewrite the classpath to ensure that all of the entries are within the sandbox.
         args[i + 1] = try rewriteClasspath(
-          args[i + 1], dotMinecraftDir: dotMinecraftDir, sandboxRoot: sandboxRoot)
+          args[i + 1], dotMinecraftDir: dotMinecraftDir, sandboxRoot: sandboxRoot, classpathMap: &classpathMap)
       } else if args[i] == "--versionType" {
         // Prefix the version type with "Sandbox", so it is clear that the game is running in a sandbox.
         foundVersionType = true
@@ -175,12 +177,56 @@ class SandboxCommandLine {
     // Remove any javaagent arguments
     args.removeAll { $0.starts(with: "-javaagent") }
 
+    logger.debug("Classpath map: \(classpathMap)")
+
+    for name in ["fabric.gameJarPath", "fabric.gameJarPath.client", "fabric.gameJarPath.server"] {
+      SandboxCommandLine.modifyJvmProp(name: name, args: &args) { value in
+        let classPath = value.split(separator: ";")
+        var newClasspath: [String] = []
+
+        for path in classPath {
+          let file = File(String(path))
+          let newPath = classpathMap[file.path()]
+          if newPath == nil && file.exists() {
+            logger.warning("Failed to find classpath entry for \(path)")
+          }
+
+          newClasspath.append(newPath ?? String(path))
+        }
+
+        return newClasspath.joined(separator: ";")
+      }
+    }
+
+    SandboxCommandLine.modifyJvmProp(name: "fabric.classPathGroups", args: &args) { value in
+      let groups = value.split(separator: ";;")
+      var newGroups: [String] = []
+
+      for group in groups {
+        let classPath = group.split(separator: ";")
+        var newClasspath: [String] = []
+
+        for path in classPath {
+          let file = File(String(path))
+          let newPath = classpathMap[file.path()]
+          if newPath == nil && file.exists() {
+            logger.warning("Failed to find classpath entry for \(path)")
+          }
+          newClasspath.append(newPath ?? String(path))
+        }
+
+        newGroups.append(newClasspath.joined(separator: ";"))
+      }
+
+      return newGroups.joined(separator: ";;")
+    }
+
     // TODO if an args file was used, we should write a new one with the updated args
     return args
   }
 
   // Read the classpath from the arguments and copy the files to the sandbox, returning the new classpath.
-  func rewriteClasspath(_ classPathArgument: String, dotMinecraftDir: File, sandboxRoot: File)
+  func rewriteClasspath(_ classPathArgument: String, dotMinecraftDir: File, sandboxRoot: File, classpathMap: inout [String: String])
     throws -> String
   {
     let classPath = classPathArgument.split(separator: ";")
@@ -213,11 +259,13 @@ class SandboxCommandLine {
         logger.debug("Copying classpath entry to sandbox: \(source.path()) -> \(target.path())")
         try source.copy(to: target)
         newClasspath.append(target.path())
+        classpathMap[source.path()] = target.path()
       } else {
         // The classpath entry is located within the minecraft jar, so will be mounted into the sandbox.
         let relativePath = source.relative(to: dotMinecraftDir)
         let sandboxPath = sandboxRoot.child(relativePath)
         newClasspath.append(sandboxPath.path())
+        classpathMap[source.path()] = sandboxPath.path()
       }
     }
     return newClasspath.joined(separator: ";")
@@ -251,5 +299,17 @@ class SandboxCommandLine {
     let newClasspathFile = classpathDir.child("remapClasspath.txt")
     try newClasspathFile.writeString(newEntries.map { $0.path() }.joined(separator: ";"))
     return newClasspathFile
+  }
+
+  private static func modifyJvmProp(name: String, args: inout [String], _ func: (String) -> String) {
+    let prop = "-D\(name)="
+    for i in 0..<args.count {
+      if args[i].starts(with: prop) {
+        args[i] = prop + `func`(String(args[i].dropFirst(prop.count)))
+        return
+      }
+    }
+
+    logger.debug("Failed to modify JVM property: \(name)")
   }
 }
