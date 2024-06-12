@@ -107,6 +107,43 @@ struct CommandLineTests {
     }
   }
 
+  @Test func rewriteGameJarPath() throws {
+    let dummmyDotMinecraftDir = try createTempDir(ext: ".minecraft")
+    let dummySandboxRoot = try createTempDir(ext: ".sandbox")
+
+    defer { try! dummmyDotMinecraftDir.delete() }
+    defer { try! dummySandboxRoot.delete() }
+
+    let binDir = dummmyDotMinecraftDir.child("bin")
+    let dummyJar = binDir.child("test.jar")
+    try binDir.createDirectory()
+    try dummyJar.touch()
+
+    let commandLine = try processCommandLine(
+      ["-cp", dummyJar.path(), "-Dfabric.gameJarPath=" + dummyJar.path()], dotMinecraftDir: dummmyDotMinecraftDir,
+      sandboxRoot: dummySandboxRoot)
+    expectContains(commandLine, ["-Dfabric.gameJarPath=" + dummySandboxRoot.child("bin").child("test.jar").path()])
+  }
+
+  @Test func rewriteClasspathGroups() throws {
+    let dummmyDotMinecraftDir = try createTempDir(ext: ".minecraft")
+    let dummySandboxRoot = try createTempDir(ext: ".sandbox")
+
+    defer { try! dummmyDotMinecraftDir.delete() }
+    defer { try! dummySandboxRoot.delete() }
+
+    let binDir = dummmyDotMinecraftDir.child("bin")
+    let dummyJar = binDir.child("test.jar")
+    try binDir.createDirectory()
+    try dummyJar.touch()
+
+    let commandLine = try processCommandLine(
+      ["-cp", dummyJar.path(), "-Dfabric.classPathGroups=" + dummyJar.path() + ";" + dummyJar.path() + ";;test.jar"], dotMinecraftDir: dummmyDotMinecraftDir,
+      sandboxRoot: dummySandboxRoot)
+    let sbPath = dummySandboxRoot.child("bin").child("test.jar").path()
+    expectContains(commandLine, ["-Dfabric.classPathGroups=" + sbPath + ";" + sbPath + ";;test.jar"])
+  }
+
   private func processCommandLine(
     _ args: [String], dotMinecraftDir: File = File("C:/.minecraft"),
     sandboxRoot: File = File("S:"),
