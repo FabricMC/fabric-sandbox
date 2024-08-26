@@ -14,7 +14,7 @@ jobs:
         with:
           github-repo: thebrowsercompany/swift-build
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          release-tag-name: 20240422.2
+          release-tag-name: 20240826.0
           release-asset-name: installer-amd64.exe
       - uses: actions/setup-java@v4
         with:
