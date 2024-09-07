@@ -1,11 +1,11 @@
-@_spi(Experimental) import Testing
+import Testing
 import WinSDK
 import WindowsUtils
 
 @testable import FabricSandbox
 @testable import Sandbox
 
-@Suite(.serial) struct MountedDiskTests {
+@Suite(.serialized) struct MountedDiskTests {
   @Test func testGetUsedDriveLetters() throws {
     let drives = MountedDisk.getUsedDriveLetters()
     #expect(drives.contains("C"))

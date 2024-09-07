@@ -1,5 +1,5 @@
 import Sandbox
-@_spi(Experimental) import Testing
+import Testing
 import WinSDK
 import WindowsUtils
 
@@ -7,7 +7,7 @@ import WindowsUtils
 
 /// Run SandboxTest.exe with the given options in a sandbox, returning the exit code and command line output
 
-@Suite(.serial) struct IntergrationTests {
+@Suite(.serialized) struct IntergrationTests {
   @Test func testRunSmoke() throws {
     let (exitCode, output) = try runIntergration(["smoke"])
     #expect(exitCode == 0)

@@ -22,7 +22,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-format", revision: "58c2ef5"),
-        .package(url: "https://github.com/apple/swift-testing", .upToNextMinor(from: "0.6.0")),
+        .package(url: "https://github.com/apple/swift-testing", .upToNextMinor(from: "0.12.0")),
         .package(url: "https://github.com/apple/swift-log.git", from: "1.0.0"),
         .package(url: "https://github.com/modmuss50/Detours", revision: "23deb11"),
     ],
