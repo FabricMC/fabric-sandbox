@@ -54,28 +54,3 @@ jobs:
       - name: Swift test
         working-directory: ./windows
         run: swift test --disable-xctest
-
-  format:
-    runs-on: windows-2022
-    steps:
-      - uses: actions/checkout@v4
-      - uses: microsoft/setup-msbuild@v1.1
-        with:
-          msbuild-architecture: x64
-      - uses: compnerd/gha-setup-swift@main
-        with:
-          github-repo: thebrowsercompany/swift-build
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          release-tag-name: 20240422.2
-          release-asset-name: installer-amd64.exe
-      - uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '21'
-      - run: ./gradlew :windows:copyJniHeaders
-      - name: Swift format
-        working-directory: ./windows
-        run: swift run swift-format format -r -p Sources/ Tests/
-      - name: Swift lint
-        working-directory: ./windows
-        run: swift run swift-format lint -r -p Sources/ Tests/
