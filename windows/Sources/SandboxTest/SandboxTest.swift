@@ -3,17 +3,17 @@ import WindowsUtils
 
 @main
 class SandboxTest {
-  static let commands: [String: Command] = [
-    "smoke": SmokeCommand(),
-    "readFile": ReadFileCommand(),
-    "registry": RegistryCommand(),
-    "namedPipe": NamedPipeCommand(),
-    "nameMax": NameMaxCommand(),
-    "mouseMovements": MouseMovementsCommand(),
-    "speech": SpeechCommand(),
-  ]
-
   static func main() throws {
+    let commands: [String: Command] = [
+      "smoke": SmokeCommand(),
+      "readFile": ReadFileCommand(),
+      "registry": RegistryCommand(),
+      "namedPipe": NamedPipeCommand(),
+      "nameMax": NameMaxCommand(),
+      "mouseMovements": MouseMovementsCommand(),
+      "speech": SpeechCommand(),
+    ]
+
     if CommandLine.arguments.count < 2 {
       throw SandboxTestError("No arguments")
     }

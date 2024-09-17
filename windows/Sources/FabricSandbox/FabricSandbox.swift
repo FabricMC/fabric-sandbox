@@ -6,9 +6,9 @@ import Logging
 
 /// TODO: Add support for LPAC (Less Privileged AppContainer)
 
-private var lpac = false
+private let lpac = false
 
-var logger = Logger(label: "net.fabricmc.sandbox")
+nonisolated(unsafe) var logger = Logger(label: "net.fabricmc.sandbox")
 
 class FabricSandbox {
   func run() throws {
