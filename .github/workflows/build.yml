@@ -12,10 +12,8 @@ jobs:
           msbuild-architecture: x64
       - uses: compnerd/gha-setup-swift@main
         with:
-          github-repo: thebrowsercompany/swift-build
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          release-tag-name: 20240422.2
-          release-asset-name: installer-amd64.exe
+          branch: swift-6.0.2-release
+          tag: 6.0.2-RELEASE
       - uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
@@ -47,7 +45,7 @@ jobs:
           java-version: '21'
       - run: ./gradlew :windows:copyJniHeaders
       # Patch to fix building Foundation on Windows with c++ interop, remove in Swift 6.1
-      - run: (Get-Content -Raw -Path "$env:LOCALAPPDATA\Programs\Swift\Platforms\6.0.0\Windows.platform\Developer\SDKs\Windows.sdk\usr\share\ucrt.modulemap") -replace "module complex \{[\s\S]*?\}", "module complex {`n    }" | Set-Content -Path "$env:LOCALAPPDATA\Programs\Swift\Platforms\6.0.0\Windows.platform\Developer\SDKs\Windows.sdk\usr\share\ucrt.modulemap"
+      - run: (Get-Content -Raw -Path "$env:LOCALAPPDATA\Programs\Swift\Platforms\6.0.2\Windows.platform\Developer\SDKs\Windows.sdk\usr\share\ucrt.modulemap") -replace "module complex \{[\s\S]*?\}", "module complex {`n    }" | Set-Content -Path "$env:LOCALAPPDATA\Programs\Swift\Platforms\6.0.2\Windows.platform\Developer\SDKs\Windows.sdk\usr\share\ucrt.modulemap"
       - name: Swift build
         working-directory: ./windows
         run: swift build
