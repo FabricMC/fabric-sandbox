@@ -7,7 +7,7 @@ class SwiftRedistributables {
 
     let redistributables = try swiftRedistributables()
     let archName = arch == .arm64 ? "arm64" : "amd64"
-    let rtl = redistributables.child("0.0.0").child("rtl.\(archName).msm")
+    let rtl = redistributables.child("6.0.2").child("rtl.\(archName).msm")
 
     guard rtl.exists() else {
       throw PackagerError("Could not find \(rtl)")
