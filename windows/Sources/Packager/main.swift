@@ -2,7 +2,7 @@ import Sandbox
 import WindowsUtils
 import Logging
 
-nonisolated(unsafe) var logger = Logger(label: "net.fabricmc.sandbox.packager")
+var logger = Logger(label: "net.fabricmc.sandbox.packager")
 logger.logLevel = .debug
 
 let options = try getOptions()

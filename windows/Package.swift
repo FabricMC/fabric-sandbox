@@ -21,9 +21,9 @@ let package = Package(
         .executable(name: "Packager", targets: ["Packager"])
     ],
     dependencies: [
-        .package(url: "https://github.com/apple/swift-format", revision: "58c2ef5"),
-        .package(url: "https://github.com/apple/swift-testing", .upToNextMinor(from: "0.99.0")),
-        .package(url: "https://github.com/apple/swift-log.git", from: "1.6.1"),
+        .package(url: "https://github.com/apple/swift-format", from: "600.0.0"),
+        .package(url: "https://github.com/apple/swift-testing", revision: "399f76"),
+        .package(url: "https://github.com/apple/swift-log.git", from: "1.6.2"),
         .package(url: "https://github.com/modmuss50/Detours", revision: "23deb11"),
     ],
     targets: [

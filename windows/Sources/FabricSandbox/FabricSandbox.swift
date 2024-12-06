@@ -8,7 +8,7 @@ import Logging
 
 private let lpac = false
 
-nonisolated(unsafe) var logger = Logger(label: "net.fabricmc.sandbox")
+var logger = Logger(label: "net.fabricmc.sandbox")
 
 class FabricSandbox {
   func run() throws {
