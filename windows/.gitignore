@@ -8,3 +8,4 @@ DerivedData/
 .netrc
 Sources/Jni
 Sources/Hook/include/Runtime-Swift.h
+.index-build

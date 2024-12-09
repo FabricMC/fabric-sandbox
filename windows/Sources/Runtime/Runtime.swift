@@ -2,7 +2,7 @@ import Shared
 import WinSDK
 import WindowsUtils
 
-private var pipeClient: NamedPipeClient? = nil
+nonisolated(unsafe) private var pipeClient: NamedPipeClient? = nil
 
 public func processAttach() {
   // TODO fix me

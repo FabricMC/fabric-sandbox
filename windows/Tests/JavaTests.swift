@@ -1,8 +1,8 @@
 import Sandbox
-@_spi(Experimental) import Testing
+import Testing
 import WindowsUtils
 
-@Suite(.serial) struct JavaTests {
+@Suite(.serialized) struct JavaTests {
   @Test func testHelloWorld() throws {
     let output = try runJava(
       """

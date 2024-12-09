@@ -2,7 +2,7 @@ import WinSDK
 
 // A file API implementation using Win32 without using the swift foundation library.
 
-public class File: CustomStringConvertible {
+public final class File: CustomStringConvertible, Sendable {
   static let pathSeparators: [Character] = ["/", "\\"]
 
   let parts: [String]

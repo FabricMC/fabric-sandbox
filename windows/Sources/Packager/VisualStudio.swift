@@ -2,7 +2,7 @@ import WinSDK
 import WindowsUtils
 
 struct VisualStudio {
-  static var dumpBin: File = {
+  static let dumpBin: File = {
     let dumpBin = try! find(
       "**/Host\(compileArchitecture.name)/\(compileArchitecture.name)/dumpbin.exe")
     return dumpBin

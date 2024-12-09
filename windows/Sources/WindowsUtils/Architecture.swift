@@ -3,7 +3,7 @@
 #elseif arch(arm64)
   public let compileArchitecture = Architecture.arm64
 #endif
-public enum Architecture {
+public enum Architecture: Sendable {
   case x64
   case arm64
 

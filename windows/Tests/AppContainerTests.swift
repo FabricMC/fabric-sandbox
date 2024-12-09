@@ -1,10 +1,10 @@
 import Sandbox
-@_spi(Experimental) import Testing
+import Testing
 import WinSDK
 
 @testable import FabricSandbox
 
-@Suite(.serial) struct AppContainerTests {
+@Suite(.serialized) struct AppContainerTests {
   @Test func testCreateAppContainerNoCapabilities() throws {
     let _ = try AppContainer.create(
       name: "TestContainer", description: "Test Container", capabilities: [])
