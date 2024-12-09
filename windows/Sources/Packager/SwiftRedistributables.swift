@@ -6,8 +6,14 @@ class SwiftRedistributables {
     try resetDir(out)
 
     let redistributables = try swiftRedistributables()
+    let versionedDir = try redistributables.directoryContents().first
+
+    guard let versionDir = versionedDir else {
+      throw PackagerError("Could not find versioned directory in \(redistributables)")
+    }
+
     let archName = arch == .arm64 ? "arm64" : "amd64"
-    let rtl = redistributables.child("6.0.2").child("rtl.\(archName).msm")
+    let rtl = versionDir.child("rtl.\(archName).msm")
 
     guard rtl.exists() else {
       throw PackagerError("Could not find \(rtl)")
