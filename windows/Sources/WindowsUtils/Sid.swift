@@ -1,15 +1,14 @@
 import WinSDK
 import WinSDKExtras
-import WindowsUtils
 
 public class Sid: CustomStringConvertible {
-  var value: PSID
+  public var value: PSID
 
-  init(_ sid: PSID) {
+  public init(_ sid: PSID) {
     self.value = sid
   }
 
-  static func createWellKnown(_ type: WELL_KNOWN_SID_TYPE) throws -> Sid {
+  public static func createWellKnown(_ type: WELL_KNOWN_SID_TYPE) throws -> Sid {
     var size = DWORD(_SECURITY_MAX_SID_SIZE())
     let sid: PSID = HeapAlloc(GetProcessHeap(), DWORD(HEAP_ZERO_MEMORY), SIZE_T(size))!
     var result = CreateWellKnownSid(type, nil, sid, &size)
@@ -76,16 +75,16 @@ public class Sid: CustomStringConvertible {
   }
 }
 
-class SidAndAttributes {
-  let sid: Sid
-  let sidAttributes: SID_AND_ATTRIBUTES
+public class SidAndAttributes {
+  public let sid: Sid
+  public let sidAttributes: SID_AND_ATTRIBUTES
 
-  init(sid: Sid) {
+  public init(sid: Sid) {
     self.sid = sid
     self.sidAttributes = SID_AND_ATTRIBUTES(Sid: sid.value, Attributes: DWORD(SE_GROUP_ENABLED))
   }
 
-  static func createWithCapability(type: SidCapability) throws -> SidAndAttributes {
+  public static func createWithCapability(type: SidCapability) throws -> SidAndAttributes {
     let sid =
       switch type {
       case .wellKnown(let wellKnownType):

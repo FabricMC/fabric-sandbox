@@ -96,14 +96,14 @@ private func runJava(_ source: String) throws -> String {
   }
 
   try grantAccess(
-    javaHome, appContainer: container, accessPermissions: [.genericRead, .genericExecute])
+    javaHome, trustee: container, accessPermissions: [.genericRead, .genericExecute])
   try grantAccess(
-    File(mountedDisk.drivePath), appContainer: container, accessPermissions: [.genericAll])
+    File(mountedDisk.drivePath), trustee: container, accessPermissions: [.genericAll])
   try grantAccess(
-    try getModuleFileName().parent()!, appContainer: container,
+    try getModuleFileName().parent()!, trustee: container,
     accessPermissions: [.genericRead, .genericExecute])
   try grantAccess(
-    try findSwiftRuntimeDirectory(), appContainer: container,
+    try findSwiftRuntimeDirectory(), trustee: container,
     accessPermissions: [.genericRead, .genericExecute])
 
   let outputConsumer = TestOutputConsumer()

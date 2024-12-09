@@ -1,26 +1,24 @@
 import WinSDK
 import WinSDKExtras
-// Reads the existing ACL for the given path and adds an entry to it that grants the app container the specified access permissions.
-import WindowsUtils
 
 public func grantAccess(
-  _ file: File, appContainer: AppContainer, accessPermissions: [AccessPermissions]
+  _ file: File, trustee: Trustee, accessPermissions: [AccessPermissions]
 )
   throws
 {
-  return try setAccess(file, appContainer: appContainer, accessMode: .grant, accessPermissions: accessPermissions)
+  return try setAccess(file, trustee: trustee, accessMode: .grant, accessPermissions: accessPermissions)
 }
 
 public func denyAccess(
-  _ file: File, appContainer: AppContainer, accessPermissions: [AccessPermissions]
+  _ file: File, trustee: Trustee, accessPermissions: [AccessPermissions]
 )
   throws
 {
-  return try setAccess(file, appContainer: appContainer, accessMode: .deny, accessPermissions: accessPermissions)
+  return try setAccess(file, trustee: trustee, accessMode: .deny, accessPermissions: accessPermissions)
 }
 
 public func setAccess(
-  _ file: File, appContainer: AppContainer, accessMode: AccessMode, accessPermissions: [AccessPermissions]
+  _ file: File, trustee: Trustee, accessMode: AccessMode, accessPermissions: [AccessPermissions]
 )
   throws
 {
@@ -28,7 +26,7 @@ public func setAccess(
 
   // Check that the path exists
   guard GetFileAttributesW(path.wide) != INVALID_FILE_ATTRIBUTES else {
-    throw SandboxError("Path does not exist: '\(path)'")
+    throw Win32Error("Path does not exist: '\(path)'", errorCode: DWORD(ERROR_FILE_NOT_FOUND))
   }
 
   // Read the existing ACL
@@ -44,13 +42,7 @@ public func setAccess(
     grfAccessPermissions: accessPermissions.reduce(0) { $0 | $1.rawValue },
     grfAccessMode: accessMode.accessMode,
     grfInheritance: accessMode.inheritanceFlags,
-    Trustee: TRUSTEE_W(
-      pMultipleTrustee: nil,
-      MultipleTrusteeOperation: NO_MULTIPLE_TRUSTEE,
-      TrusteeForm: TRUSTEE_IS_SID,
-      TrusteeType: TRUSTEE_IS_WELL_KNOWN_GROUP,
-      ptstrName: _CASTSID(appContainer.sid.value)
-    )
+    Trustee: trustee.trustee
   )
 
   // Add an entry to the ACL that grants the app container the specified access permissions
@@ -67,7 +59,7 @@ public func setAccess(
       case .AccessAllowed(let sid):
         // Remove any existing access allowed ACEs for the app container
         // This likely comes from the parent directory, but we can remove it since inheritance is disabled
-        return EqualSid(sid, appContainer.sid.value)
+        return EqualSid(sid, trustee.sid.value)
       default:
         return false
       }
@@ -146,12 +138,12 @@ private func removeFirstAceIf(
 }
 
 public func grantNamedPipeAccess(
-  pipe: NamedPipeServer, appContainer: AppContainer, accessPermissions: [AccessPermissions]
+  pipe: NamedPipeServer, trustee: Trustee, accessPermissions: [AccessPermissions]
 )
   throws
 {
   guard let handle = pipe.handle else {
-    throw SandboxError("Named pipe handle is nil")
+    throw Win32Error("Named pipe handle is nil", errorCode: DWORD(ERROR_INVALID_HANDLE))
   }
 
   // Read the existing ACL
@@ -172,7 +164,7 @@ public func grantNamedPipeAccess(
       MultipleTrusteeOperation: NO_MULTIPLE_TRUSTEE,
       TrusteeForm: TRUSTEE_IS_SID,
       TrusteeType: TRUSTEE_IS_WELL_KNOWN_GROUP,
-      ptstrName: _CASTSID(appContainer.sid.value)
+      ptstrName: _CASTSID(trustee.sid.value)
     )
   )
 
@@ -236,4 +228,9 @@ public enum AccessMode {
 public enum Ace {
   case AccessAllowed(PSID)
   case AccessDenied(PSID)
+}
+
+public protocol Trustee {
+  var sid: Sid { get }
+  var trustee: TRUSTEE_W { get }
 }

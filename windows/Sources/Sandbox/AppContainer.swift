@@ -2,9 +2,10 @@ import WinSDK
 import WinSDKExtras
 import WindowsUtils
 
-public class AppContainer {
+public class AppContainer: Trustee {
   public let name: String
   public let sid: Sid
+  public let trustee: TRUSTEE_W
   let attributes: [SidAndAttributes]
   // Less Privileged App Container
   let lpac: Bool
@@ -18,6 +19,13 @@ public class AppContainer {
     self.attributes = attributes
     self.lpac = lpac
     self.mutex = mutex
+    self.trustee = TRUSTEE_W(
+      pMultipleTrustee: nil,
+      MultipleTrusteeOperation: NO_MULTIPLE_TRUSTEE,
+      TrusteeForm: TRUSTEE_IS_SID,
+      TrusteeType: TRUSTEE_IS_WELL_KNOWN_GROUP,
+      ptstrName: _CASTSID(sid.value)
+    )
   }
 
   deinit {

@@ -1,6 +1,7 @@
 import Sandbox
 import Testing
 import WinSDK
+import WindowsUtils
 
 @testable import FabricSandbox
 
@@ -43,6 +44,6 @@ import WinSDK
       name: "TestContainer", description: "Test Container", capabilities: [])
     print("SID: '\(container.sid)'")
 
-    try grantAccess(tempDir, appContainer: container, accessPermissions: [.genericAll])
+    try grantAccess(tempDir, trustee: container, accessPermissions: [.genericAll])
   }
 }

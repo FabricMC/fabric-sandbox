@@ -106,42 +106,42 @@ class FabricSandbox {
 
       // Grant full access to the mounted disk
       try grantAccess(
-        sandboxRoot, appContainer: container,
+        sandboxRoot, trustee: container,
         accessPermissions: [.genericAll])
 
       if let assetsDir = commandLine.getAssetsDir(), isDevEnv {
         // Grant read access to the assets dir in dev
         try grantAccess(
-          assetsDir, appContainer: container,
+          assetsDir, trustee: container,
           accessPermissions: [.genericRead])
       }
 
       if let log4jConfig = commandLine.getJvmProp("log4j.configurationFile") {
         // Grant read access to the log4j configuration file
         try grantAccess(
-          File(log4jConfig), appContainer: container,
+          File(log4jConfig), trustee: container,
           accessPermissions: [.genericRead])
       }
     } else {
       logger.debug("Working directory is not root, granting access")
       // Grant read and execute to .minecraft
       try grantAccess(
-        sandboxRoot, appContainer: container,
+        sandboxRoot, trustee: container,
         accessPermissions: [.genericRead, .genericExecute])
 
       // Grant full access to the working directory
       try grantAccess(
-        sandboxWorkingDirectory, appContainer: container,
+        sandboxWorkingDirectory, trustee: container,
         accessPermissions: [.genericAll])
 
       try grantAccess(
-        tempDir, appContainer: container,
+        tempDir, trustee: container,
         accessPermissions: [.genericAll])
     }
 
     // Grant read and execute to Java home
     try grantAccess(
-      javaDirectory, appContainer: container,
+      javaDirectory, trustee: container,
       accessPermissions: [.genericRead, .genericExecute])
 
     // Create a named pipe server for IPC with the sandboxed process
@@ -150,7 +150,7 @@ class FabricSandbox {
 
     // Grant access to the named pipe
     try grantNamedPipeAccess(
-      pipe: namedPipeServer, appContainer: container,
+      pipe: namedPipeServer, trustee: container,
       accessPermissions: [.genericRead, .genericWrite])
 
     let args = try commandLine.getSandboxArgs(

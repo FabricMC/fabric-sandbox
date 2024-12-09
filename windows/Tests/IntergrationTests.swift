@@ -168,7 +168,7 @@ func runIntergration(
 
   for filePermission in filePermissions {
     try setAccess(
-      filePermission.path, appContainer: container,
+      filePermission.path, trustee: container,
       accessMode: filePermission.accessMode,
       accessPermissions: filePermission.accessPermissions)
   }
@@ -186,15 +186,15 @@ func runIntergration(
 
   // Grant access to the test executable, hook dll and swift binaries
   try grantAccess(
-    testExecutable, appContainer: container,
+    testExecutable, trustee: container,
     accessPermissions: [.genericRead, .genericExecute])
   try grantAccess(
-    hookDll, appContainer: container,
+    hookDll, trustee: container,
     accessPermissions: [.genericRead, .genericExecute])
 
   for dll in swiftDllPaths {
     try grantAccess(
-      dll, appContainer: container,
+      dll, trustee: container,
       accessPermissions: [.genericRead, .genericExecute])
   }
 
@@ -202,7 +202,7 @@ func runIntergration(
 
   if let namedPipe = namedPipe {
     try grantNamedPipeAccess(
-      pipe: namedPipe, appContainer: container, accessPermissions: [.genericRead, .genericWrite])
+      pipe: namedPipe, trustee: container, accessPermissions: [.genericRead, .genericWrite])
     if namedPipe is SandboxNamedPipeServer {
       commandLine.append("-Dsandbox.namedPipe=\(namedPipe.path)")
     }
