@@ -159,13 +159,7 @@ public func grantNamedPipeAccess(
     grfAccessPermissions: accessPermissions.reduce(0) { $0 | $1.rawValue },
     grfAccessMode: GRANT_ACCESS,
     grfInheritance: DWORD(OBJECT_INHERIT_ACE | CONTAINER_INHERIT_ACE),
-    Trustee: TRUSTEE_W(
-      pMultipleTrustee: nil,
-      MultipleTrusteeOperation: NO_MULTIPLE_TRUSTEE,
-      TrusteeForm: TRUSTEE_IS_SID,
-      TrusteeType: TRUSTEE_IS_WELL_KNOWN_GROUP,
-      ptstrName: _CASTSID(trustee.sid.value)
-    )
+    Trustee: trustee.trustee
   )
 
   // Add an entry to the ACL that grants the app container the specified access permissions
