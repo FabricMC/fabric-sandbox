@@ -3,12 +3,15 @@ import WinSDKExtras
 import WindowsUtils
 
 class ProcThreadAttributeList {
+  let attributes: [ProcThreadAttribute]
   let attributeList: LPPROC_THREAD_ATTRIBUTE_LIST
 
   init(attributes: [ProcThreadAttribute]) throws {
     var attributeList = try ProcThreadAttributeList.createAttributeList(attributeCount: attributes.count)
 
-    for attribute in attributes {
+    self.attributes = attributes
+
+    for attribute in self.attributes {
       try attribute.apply(&attributeList)
     }
 
@@ -52,30 +55,29 @@ protocol ProcThreadAttribute {
 internal func updateProcThreadAttribute<T>(
   attributeList: inout LPPROC_THREAD_ATTRIBUTE_LIST,
   attribute: DWORD,
-  value: inout T,
+  value: UnsafeMutablePointer<T>,
   size: Int
 ) throws {
-  let result = withUnsafeMutablePointer(to: &value) {
-    UpdateProcThreadAttribute(
-      attributeList,
-      0,
-      DWORD_PTR(attribute),
-      $0,
-      SIZE_T(size),
-      nil,
-      nil
-    )
-  }
+  let result = UpdateProcThreadAttribute(
+    attributeList,
+    0,
+    DWORD_PTR(attribute),
+    value,
+    SIZE_T(size),
+    nil,
+    nil
+  )
   guard result else {
     throw Win32Error("UpdateProcThreadAttribute")
   }
 }
 
 class SecurityCapabilitiesProcThreadAttribute: ProcThreadAttribute {
-  var securityCapabilities: SECURITY_CAPABILITIES
+  var securityCapabilities: UnsafeMutablePointer<SECURITY_CAPABILITIES>
   init(container: AppContainer, securityAttributes: UnsafeMutableBufferPointer<SID_AND_ATTRIBUTES>)
   {
-    self.securityCapabilities = SECURITY_CAPABILITIES(
+    self.securityCapabilities = UnsafeMutablePointer<SECURITY_CAPABILITIES>.allocate(capacity: 1)
+    self.securityCapabilities.pointee = SECURITY_CAPABILITIES(
       AppContainerSid: container.sid.value,
       Capabilities: securityAttributes.baseAddress,
       CapabilityCount: DWORD(securityAttributes.count),
@@ -83,24 +85,37 @@ class SecurityCapabilitiesProcThreadAttribute: ProcThreadAttribute {
     )
   }
 
+  deinit {
+    self.securityCapabilities.deallocate()
+  }
+
   func apply(_ attributeList: inout LPPROC_THREAD_ATTRIBUTE_LIST) throws {
     try updateProcThreadAttribute(
       attributeList: &attributeList,
       attribute: _PROC_THREAD_ATTRIBUTE_SECURITY_CAPABILITIES(),
-      value: &self.securityCapabilities,
+      value: self.securityCapabilities,
       size: MemoryLayout<SECURITY_CAPABILITIES>.size
     )
   }
 }
 
 class LessPrivilegedAppContainerProcThreadAttribute: ProcThreadAttribute {
-  func apply(_ attributeList: inout LPPROC_THREAD_ATTRIBUTE_LIST) throws {
-    var enabled: DWORD = 1
+  var enabled: UnsafeMutablePointer<DWORD>
 
+  init() {
+    self.enabled = UnsafeMutablePointer<DWORD>.allocate(capacity: 1)
+    self.enabled.pointee = 1
+  }
+
+  deinit {
+    self.enabled.deallocate()
+  }
+
+  func apply(_ attributeList: inout LPPROC_THREAD_ATTRIBUTE_LIST) throws {
     try updateProcThreadAttribute(
       attributeList: &attributeList,
       attribute: _PROC_THREAD_ATTRIBUTE_ALL_APPLICATION_PACKAGES_POLICY(),
-      value: &enabled,
+      value: self.enabled,
       size: MemoryLayout<DWORD>.size
     )
   }
