@@ -85,6 +85,10 @@ class SecurityCapabilitiesProcThreadAttribute: ProcThreadAttribute {
     )
   }
 
+  deinit {
+    self.securityCapabilities.deallocate()
+  }
+
   func apply(_ attributeList: inout LPPROC_THREAD_ATTRIBUTE_LIST) throws {
     try updateProcThreadAttribute(
       attributeList: &attributeList,
@@ -101,6 +105,10 @@ class LessPrivilegedAppContainerProcThreadAttribute: ProcThreadAttribute {
   init() {
     self.enabled = UnsafeMutablePointer<DWORD>.allocate(capacity: 1)
     self.enabled.pointee = 1
+  }
+
+  deinit {
+    self.enabled.deallocate()
   }
 
   func apply(_ attributeList: inout LPPROC_THREAD_ATTRIBUTE_LIST) throws {
