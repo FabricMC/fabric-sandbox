@@ -201,8 +201,8 @@ func runIntergration(
   var commandLine = [testExecutable.path()] + args
 
   if let namedPipe = namedPipe {
-    try grantNamedPipeAccess(
-      pipe: namedPipe, trustee: container, accessPermissions: [.genericRead, .genericWrite])
+    try grantAccess(
+      namedPipe, trustee: container, accessPermissions: [.genericRead, .genericWrite])
     if namedPipe is SandboxNamedPipeServer {
       commandLine.append("-Dsandbox.namedPipe=\(namedPipe.path)")
     }

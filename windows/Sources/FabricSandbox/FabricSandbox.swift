@@ -149,8 +149,8 @@ class FabricSandbox {
       pipeName: "\\\\.\\pipe\\FabricSandbox" + randomString(length: 10))
 
     // Grant access to the named pipe
-    try grantNamedPipeAccess(
-      pipe: namedPipeServer, trustee: container,
+    try grantAccess(
+      namedPipeServer, trustee: container,
       accessPermissions: [.genericRead, .genericWrite])
 
     let args = try commandLine.getSandboxArgs(

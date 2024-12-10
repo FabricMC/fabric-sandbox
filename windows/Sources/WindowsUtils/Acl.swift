@@ -2,41 +2,29 @@ import WinSDK
 import WinSDKExtras
 
 public func grantAccess(
-  _ file: File, trustee: Trustee, accessPermissions: [AccessPermissions]
+  _ object: SecurityObject, trustee: Trustee, accessPermissions: [AccessPermissions]
 )
   throws
 {
-  return try setAccess(file, trustee: trustee, accessMode: .grant, accessPermissions: accessPermissions)
+  return try setAccess(object, trustee: trustee, accessMode: .grant, accessPermissions: accessPermissions)
 }
 
 public func denyAccess(
-  _ file: File, trustee: Trustee, accessPermissions: [AccessPermissions]
+  _ object: SecurityObject, trustee: Trustee, accessPermissions: [AccessPermissions]
 )
   throws
 {
-  return try setAccess(file, trustee: trustee, accessMode: .deny, accessPermissions: accessPermissions)
+  return try setAccess(object, trustee: trustee, accessMode: .deny, accessPermissions: accessPermissions)
 }
 
 public func setAccess(
-  _ file: File, trustee: Trustee, accessMode: AccessMode, accessPermissions: [AccessPermissions]
+  _ object: SecurityObject, trustee: Trustee, accessMode: AccessMode, accessPermissions: [AccessPermissions]
 )
   throws
 {
-  let path = file.path()
-
-  // Check that the path exists
-  guard GetFileAttributesW(path.wide) != INVALID_FILE_ATTRIBUTES else {
-    throw Win32Error("Path does not exist: '\(path)'", errorCode: DWORD(ERROR_FILE_NOT_FOUND))
-  }
-
   // Read the existing ACL
   var acl: PACL? = nil
-  var result = GetNamedSecurityInfoW(
-      path.wide, SE_FILE_OBJECT, SECURITY_INFORMATION(DACL_SECURITY_INFORMATION), nil, nil, &acl, nil,
-      nil)
-  guard result == ERROR_SUCCESS, let acl = acl else {
-    throw Win32Error("GetNamedSecurityInfoW")
-  }
+  try object.getACL(acl: &acl)
   
   var explicitAccess: EXPLICIT_ACCESS_W = EXPLICIT_ACCESS_W(
     grfAccessPermissions: accessPermissions.reduce(0) { $0 | $1.rawValue },
@@ -47,7 +35,7 @@ public func setAccess(
 
   // Add an entry to the ACL that grants the app container the specified access permissions
   var newAcl: PACL? = nil
-  result = SetEntriesInAclW(1, &explicitAccess, acl, &newAcl)
+  let result = SetEntriesInAclW(1, &explicitAccess, acl, &newAcl)
   guard result == ERROR_SUCCESS, var newAcl = newAcl else {
     throw Win32Error("SetEntriesInAclW")
   }
@@ -66,22 +54,7 @@ public func setAccess(
     }
   }
 
-  // Set the new ACL on the file
-  result = path.withCString(encodedAs: UTF16.self) { path in
-    SetNamedSecurityInfoW(
-      // I dont think this actually mutates the string, at least I hope not
-      UnsafeMutablePointer(mutating: path),
-      SE_FILE_OBJECT,
-      accessMode.securityInformation,
-      nil,
-      nil,
-      newAcl,
-      nil
-    )
-  }
-  guard result == ERROR_SUCCESS else {
-    throw Win32Error("SetNamedSecurityInfoW '\(path)'", errorCode: result)
-  }
+  try object.setACL(acl: newAcl, accessMode: accessMode)
 }
 
 private func removeFirstAceIf(
@@ -137,54 +110,6 @@ private func removeFirstAceIf(
   return false
 }
 
-public func grantNamedPipeAccess(
-  pipe: NamedPipeServer, trustee: Trustee, accessPermissions: [AccessPermissions]
-)
-  throws
-{
-  guard let handle = pipe.handle else {
-    throw Win32Error("Named pipe handle is nil", errorCode: DWORD(ERROR_INVALID_HANDLE))
-  }
-
-  // Read the existing ACL
-  var acl: PACL? = nil
-  var result = GetSecurityInfo(
-      handle, SE_KERNEL_OBJECT, SECURITY_INFORMATION(DACL_SECURITY_INFORMATION), nil, nil, &acl, nil,
-      nil)
-  guard result == ERROR_SUCCESS, let acl = acl else {
-    throw Win32Error("GetNamedSecurityInfoW")
-  }
-
-  var explicitAccess: EXPLICIT_ACCESS_W = EXPLICIT_ACCESS_W(
-    grfAccessPermissions: accessPermissions.reduce(0) { $0 | $1.rawValue },
-    grfAccessMode: GRANT_ACCESS,
-    grfInheritance: DWORD(OBJECT_INHERIT_ACE | CONTAINER_INHERIT_ACE),
-    Trustee: trustee.trustee
-  )
-
-  // Add an entry to the ACL that grants the app container the specified access permissions
-  var newAcl: PACL? = nil
-  result = SetEntriesInAclW(1, &explicitAccess, acl, &newAcl)
-  guard result == ERROR_SUCCESS, let newAcl = newAcl else {
-    throw Win32Error("SetEntriesInAclW")
-  }
-  defer { LocalFree(newAcl) }
-
-  // Set the new ACL on the pipe
-  result = SetSecurityInfo(
-    handle,
-    SE_KERNEL_OBJECT,
-    SECURITY_INFORMATION(DACL_SECURITY_INFORMATION),
-    nil,
-    nil,
-    newAcl,
-    nil
-  )
-  guard result == ERROR_SUCCESS else {
-    throw Win32Error("SetSecurityInfo", errorCode: result)
-  }
-}
-
 public enum AccessPermissions: DWORD {
   // https://learn.microsoft.com/en-us/windows/win32/secauthz/generic-access-rights
   case genericAll = 0x1000_0000
@@ -227,4 +152,56 @@ public enum Ace {
 public protocol Trustee {
   var sid: Sid { get }
   var trustee: TRUSTEE_W { get }
+}
+
+public protocol SecurityObject {
+  func getACL(acl: inout PACL?) throws
+  func setACL(acl: PACL, accessMode: AccessMode) throws
+}
+
+extension File: SecurityObject {
+  public func getACL(acl: inout PACL?) throws {
+    let path = self.path()
+    guard GetFileAttributesW(path.wide) != INVALID_FILE_ATTRIBUTES else {
+      throw Win32Error("Path does not exist: '\(path)'", errorCode: DWORD(ERROR_FILE_NOT_FOUND))
+    }
+
+    let result = GetNamedSecurityInfoW(
+      path.wide, SE_FILE_OBJECT, SECURITY_INFORMATION(DACL_SECURITY_INFORMATION), nil, nil, &acl, nil, nil)
+
+    guard result == ERROR_SUCCESS else {
+      throw Win32Error("GetNamedSecurityInfoW", errorCode: result)
+    }
+  }
+
+  public func setACL(acl: PACL, accessMode: AccessMode) throws {
+    let result = self.path().withCString(encodedAs: UTF16.self) {
+      SetNamedSecurityInfoW(
+        UnsafeMutablePointer(mutating: $0), SE_FILE_OBJECT, accessMode.securityInformation, nil, nil, acl, nil)
+    }
+
+    guard result == ERROR_SUCCESS else {
+      throw Win32Error("SetNamedSecurityInfoW", errorCode: result)
+    }
+  }
+}
+
+extension NamedPipeServer: SecurityObject {
+  public func getACL(acl: inout PACL?) throws {
+    let result = GetSecurityInfo(
+      self.handle, SE_KERNEL_OBJECT, SECURITY_INFORMATION(DACL_SECURITY_INFORMATION), nil, nil, &acl, nil, nil)
+
+    guard result == ERROR_SUCCESS else {
+      throw Win32Error("GetSecurityInfo", errorCode: result)
+    }
+  }
+
+  public func setACL(acl: PACL, accessMode: AccessMode) throws {
+    let result = SetSecurityInfo(
+      self.handle, SE_KERNEL_OBJECT, SECURITY_INFORMATION(DACL_SECURITY_INFORMATION), nil, nil, acl, nil)
+
+    guard result == ERROR_SUCCESS else {
+      throw Win32Error("SetSecurityInfo", errorCode: result)
+    }
+  }
 }
