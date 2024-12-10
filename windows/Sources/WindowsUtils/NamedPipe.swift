@@ -10,8 +10,14 @@ import WinSDK
 /// A write only named pipe client
 let bufferSize = DWORD(4096)
 let securityDescriptor = "S:(ML;;NW;;;LW)D:(A;;FA;;;SY)(A;;FA;;;WD)(A;;FA;;;AC)"
-open class NamedPipeServer: Thread {
-  let pipe: HANDLE
+
+protocol NamedPipe {
+  var pipe: HANDLE { get }
+  var path: String { get }
+}
+
+open class NamedPipeServer: Thread, NamedPipe {
+  public let pipe: HANDLE
   public let path: String
 
   public init(pipeName: String) throws {
@@ -19,7 +25,7 @@ open class NamedPipeServer: Thread {
     var security: PSECURITY_DESCRIPTOR?
     let result = ConvertStringSecurityDescriptorToSecurityDescriptorW(
       securityDescriptor.wide,
-      DWORD(1),
+      DWORD(SDDL_REVISION_1),
       &security,
       nil
     )
@@ -87,32 +93,35 @@ open class NamedPipeServer: Thread {
     return false
   }
 }
-public class NamedPipeClient {
-  let pipe: HANDLE
 
-  public init(pipeName: String) throws {
+public class NamedPipeClient: NamedPipe {
+  public let pipe: HANDLE
+  public let path: String
+
+  public init(pipeName: String, desiredAccess: DWORD = DWORD(GENERIC_WRITE), mode: DWORD? = DWORD(PIPE_READMODE_MESSAGE)) throws {
     let pipe = CreateFileW(
       pipeName.wide,
-      DWORD(GENERIC_WRITE),
-      DWORD(0),
+      desiredAccess,
+      0,
       nil,
       DWORD(OPEN_EXISTING),
-      DWORD(0),
+      0,
       nil
     )
     guard pipe != INVALID_HANDLE_VALUE, let pipe = pipe else {
       throw Win32Error("CreateFileW")
     }
 
-    // Change to message mode
-    var mode = DWORD(PIPE_READMODE_MESSAGE)
-    let result = SetNamedPipeHandleState(pipe, &mode, nil, nil)
-    guard result else {
-      CloseHandle(pipe)
-      throw Win32Error("SetNamedPipeHandleState")
+    if var mode = mode  {
+      let result = SetNamedPipeHandleState(pipe, &mode, nil, nil)
+      guard result else {
+        CloseHandle(pipe)
+        throw Win32Error("SetNamedPipeHandleState")
+      }
     }
 
     self.pipe = pipe
+    self.path = pipeName
   }
 
   deinit {

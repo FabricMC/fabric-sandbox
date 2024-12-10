@@ -75,6 +75,49 @@ public func clearAccess(_ object: SecurityObject, trustee: Trustee) throws {
   try object.setACL(acl: acl, accessMode: .grant)
 }
 
+// Do not use this as a security check
+public func hasAceEntry(_ object: SecurityObject, trustee: Trustee) throws -> Bool {
+  var acl = try object.getACL()
+  var sid = trustee.sid.value
+
+  var aclSize = ACL_SIZE_INFORMATION()
+  let success = GetAclInformation(acl, &aclSize, DWORD(MemoryLayout<ACL_SIZE_INFORMATION>.size), AclSizeInformation)
+  guard success else {
+    throw Win32Error("GetAclInformation")
+  }
+
+  for i: DWORD in 0..<aclSize.AceCount {
+    var ace: LPVOID? = nil
+    let success = GetAce(acl, DWORD(i), &ace)
+    guard success, let ace = ace else {
+      throw Win32Error("GetAce")
+    }
+
+    let aceHeader = ace.assumingMemoryBound(to: ACE_HEADER.self).pointee
+
+    switch Int32(aceHeader.AceType) {
+    case ACCESS_ALLOWED_ACE_TYPE:
+      let accessAllowedAce = ace.assumingMemoryBound(to: ACCESS_ALLOWED_ACE.self).pointee
+      let aceSid = SidFromAccessAllowedAce(ace, accessAllowedAce.SidStart)
+
+      if let aceSid = aceSid, EqualSid(aceSid, sid) {
+        return true
+      }
+    case ACCESS_DENIED_ACE_TYPE:
+      let accessDeniedAce = ace.assumingMemoryBound(to: ACCESS_DENIED_ACE.self).pointee
+      let aceSid = SidFromAccessDeniedAce(ace, accessDeniedAce.SidStart)
+
+      if let aceSid = aceSid, EqualSid(aceSid, sid) {
+        return true
+      }
+    default:
+      break
+    }
+  }
+
+  return false
+}
+
 public func getStringSecurityDescriptor(_ object: SecurityObject) throws -> String {
   let acl = try object.getACL()
 
@@ -245,24 +288,42 @@ extension File: SecurityObject {
   }
 }
 
-extension NamedPipeServer: SecurityObject {
-  public func getACL() throws -> PACL {
+fileprivate func getPipeACL(_ pipe: NamedPipe) throws -> PACL {
     var acl: PACL? = nil
     let result = GetSecurityInfo(
-      self.handle, SE_KERNEL_OBJECT, SECURITY_INFORMATION(DACL_SECURITY_INFORMATION), nil, nil, &acl, nil, nil)
+      pipe.pipe, SE_KERNEL_OBJECT, SECURITY_INFORMATION(DACL_SECURITY_INFORMATION), nil, nil, &acl, nil, nil)
 
     guard result == ERROR_SUCCESS, let acl = acl else {
       throw Win32Error("GetSecurityInfo", errorCode: result)
     }
     return acl
-  }
+}
 
-  public func setACL(acl: PACL, accessMode: AccessMode) throws {
+fileprivate func setPipeACL(_ pipe: NamedPipe, acl: PACL, accessMode: AccessMode) throws {
     let result = SetSecurityInfo(
-      self.handle, SE_KERNEL_OBJECT, SECURITY_INFORMATION(DACL_SECURITY_INFORMATION), nil, nil, acl, nil)
+      pipe.pipe, SE_KERNEL_OBJECT, SECURITY_INFORMATION(DACL_SECURITY_INFORMATION), nil, nil, acl, nil)
 
     guard result == ERROR_SUCCESS else {
       throw Win32Error("SetSecurityInfo", errorCode: result)
     }
+}
+
+extension NamedPipeServer: SecurityObject {
+  public func getACL() throws -> PACL {
+    return try getPipeACL(self)
+  }
+
+  public func setACL(acl: PACL, accessMode: AccessMode) throws {
+    try setPipeACL(self, acl: acl, accessMode: accessMode)
+  }
+}
+
+extension NamedPipeClient: SecurityObject {
+  public func getACL() throws -> PACL {
+    return try getPipeACL(self)
+  }
+
+  public func setACL(acl: PACL, accessMode: AccessMode) throws {
+    try setPipeACL(self, acl: acl, accessMode: accessMode)
   }
 }

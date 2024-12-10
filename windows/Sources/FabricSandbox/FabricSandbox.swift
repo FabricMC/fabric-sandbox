@@ -153,6 +153,10 @@ class FabricSandbox {
       namedPipeServer, trustee: container,
       accessPermissions: [.genericRead, .genericWrite])
 
+    // Grant access to any of the active discord named pipes
+    // TODO we might want to run this every so often to handle new pipes
+    try grantAccessToDiscordPipes(trustee: container)
+
     let args = try commandLine.getSandboxArgs(
       dotMinecraftDir: dotMinecraft, sandboxRoot: sandboxRoot, namedPipePath: namedPipeServer.path)
 
