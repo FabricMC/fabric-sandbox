@@ -25,8 +25,11 @@ public func setAccess(
   // Read the existing ACL
   var acl: PACL? = nil
   try object.getACL(acl: &acl)
+  guard let acl = acl else {
+    throw Win32Error("getACL")
+  }
   
-  var explicitAccess: EXPLICIT_ACCESS_W = EXPLICIT_ACCESS_W(
+  var explicitAccess = EXPLICIT_ACCESS_W(
     grfAccessPermissions: accessPermissions.reduce(0) { $0 | $1.rawValue },
     grfAccessMode: accessMode.accessMode,
     grfInheritance: accessMode.inheritanceFlags,
@@ -57,10 +60,61 @@ public func setAccess(
   try object.setACL(acl: newAcl, accessMode: accessMode)
 }
 
+// Removes all specified access permissions for the trustee
+public func clearAccess(_ object: SecurityObject, trustee: Trustee) throws {
+  var acl: PACL? = nil
+  try object.getACL(acl: &acl)
+  guard var acl = acl else {
+    throw Win32Error("getACL")
+  }
+
+  while true {
+    let removed = try removeFirstAceIf(&acl) {
+      switch $0 {
+      case .AccessAllowed(let sid), .AccessDenied(let sid):
+        return EqualSid(sid, trustee.sid.value)
+      }
+    }
+
+    if !removed {
+      break
+    }
+  }
+
+  try object.setACL(acl: acl, accessMode: .grant)
+}
+
+public func getStringSecurityDescriptor(_ object: SecurityObject) throws -> String {
+  var acl: PACL? = nil
+  try object.getACL(acl: &acl)
+  guard let acl = acl else {
+    throw Win32Error("getACL")
+  }
+
+  var securityDescriptor: SECURITY_DESCRIPTOR? = nil
+  guard InitializeSecurityDescriptor(&securityDescriptor, DWORD(SECURITY_DESCRIPTOR_REVISION)) else {
+    throw Win32Error("InitializeSecurityDescriptor")
+  }
+
+  guard SetSecurityDescriptorDacl(&securityDescriptor, true, acl, false) else {
+    throw Win32Error("SetSecurityDescriptorDacl")
+  }
+
+  var stringSecurityDescriptor: LPWSTR? = nil
+  let result = ConvertSecurityDescriptorToStringSecurityDescriptorW(
+    &securityDescriptor, DWORD(SDDL_REVISION_1), SECURITY_INFORMATION(DACL_SECURITY_INFORMATION), &stringSecurityDescriptor, nil)
+  guard result, let stringSecurityDescriptor = stringSecurityDescriptor else {
+    throw Win32Error("ConvertSecurityDescriptorToStringSecurityDescriptorW")
+  }
+
+  return String(decodingCString: stringSecurityDescriptor, as: UTF16.self)
+}
+
+// Remove the first ACE that matches the predicate, returning whether an ACE was removed
 private func removeFirstAceIf(
   _ acl: inout PACL, predicate: (Ace) -> Bool
 ) throws -> Bool {
-  var aclSize: ACL_SIZE_INFORMATION = ACL_SIZE_INFORMATION()
+  var aclSize = ACL_SIZE_INFORMATION()
   let success = GetAclInformation(acl, &aclSize, DWORD(MemoryLayout<ACL_SIZE_INFORMATION>.size), AclSizeInformation)
   guard success else {
     throw Win32Error("GetAclInformation")
