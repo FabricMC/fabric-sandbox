@@ -14,25 +14,30 @@ struct AclTests {
 
     var sddl = try getStringSecurityDescriptor(tempDir)
     #expect(!sddl.contains(";\(sid)"))
+    #expect(!(try hasAceEntry(tempDir, trustee: trustee)))
 
     try grantAccess(tempDir, trustee: trustee, accessPermissions: [.genericAll])
     sddl = try getStringSecurityDescriptor(tempDir)
     // Allow full access
     #expect(sddl.contains("A;;FA;;;\(sid)"))
+    #expect(try hasAceEntry(tempDir, trustee: trustee))
 
     try clearAccess(tempDir, trustee: trustee)
     sddl = try getStringSecurityDescriptor(tempDir)
     #expect(!sddl.contains(";\(sid)"))
+    #expect(!(try hasAceEntry(tempDir, trustee: trustee)))
 
     try denyAccess(tempDir, trustee: trustee, accessPermissions: [.genericExecute])
     sddl = try getStringSecurityDescriptor(tempDir)
     // Deny execute
     #expect(sddl.contains("D;;FX;;;\(sid)"))
+    #expect(try hasAceEntry(tempDir, trustee: trustee))
 
     // Test that we can remove mutlipe ACEs
     try grantAccess(tempDir, trustee: trustee, accessPermissions: [.genericRead])
     try clearAccess(tempDir, trustee: trustee)
     sddl = try getStringSecurityDescriptor(tempDir)
     #expect(!sddl.contains(";\(sid)"))
+    #expect(!(try hasAceEntry(tempDir, trustee: trustee)))
   }
 }
