@@ -77,8 +77,8 @@ public func clearAccess(_ object: SecurityObject, trustee: Trustee) throws {
 
 // Do not use this as a security check
 public func hasAceEntry(_ object: SecurityObject, trustee: Trustee) throws -> Bool {
-  var acl = try object.getACL()
-  var sid = trustee.sid.value
+  let acl = try object.getACL()
+  let sid = trustee.sid.value
 
   var aclSize = ACL_SIZE_INFORMATION()
   let success = GetAclInformation(acl, &aclSize, DWORD(MemoryLayout<ACL_SIZE_INFORMATION>.size), AclSizeInformation)
@@ -271,7 +271,7 @@ extension File: SecurityObject {
       path.wide, SE_FILE_OBJECT, SECURITY_INFORMATION(DACL_SECURITY_INFORMATION), nil, nil, &acl, nil, nil)
 
     guard result == ERROR_SUCCESS, let acl = acl else {
-      throw Win32Error("GetNamedSecurityInfoW", errorCode: result)
+      throw Win32Error("GetNamedSecurityInfoW(\(path))", errorCode: result)
     }
     return acl
   }
@@ -283,47 +283,29 @@ extension File: SecurityObject {
     }
 
     guard result == ERROR_SUCCESS else {
-      throw Win32Error("SetNamedSecurityInfoW", errorCode: result)
+      throw Win32Error("SetNamedSecurityInfoW(\(self.path()))", errorCode: result)
     }
-  }
-}
-
-fileprivate func getPipeACL(_ pipe: NamedPipe) throws -> PACL {
-    var acl: PACL? = nil
-    let result = GetSecurityInfo(
-      pipe.pipe, SE_KERNEL_OBJECT, SECURITY_INFORMATION(DACL_SECURITY_INFORMATION), nil, nil, &acl, nil, nil)
-
-    guard result == ERROR_SUCCESS, let acl = acl else {
-      throw Win32Error("GetSecurityInfo", errorCode: result)
-    }
-    return acl
-}
-
-fileprivate func setPipeACL(_ pipe: NamedPipe, acl: PACL, accessMode: AccessMode) throws {
-    let result = SetSecurityInfo(
-      pipe.pipe, SE_KERNEL_OBJECT, SECURITY_INFORMATION(DACL_SECURITY_INFORMATION), nil, nil, acl, nil)
-
-    guard result == ERROR_SUCCESS else {
-      throw Win32Error("SetSecurityInfo", errorCode: result)
-    }
-}
-
-extension NamedPipeServer: SecurityObject {
-  public func getACL() throws -> PACL {
-    return try getPipeACL(self)
-  }
-
-  public func setACL(acl: PACL, accessMode: AccessMode) throws {
-    try setPipeACL(self, acl: acl, accessMode: accessMode)
   }
 }
 
 extension NamedPipeClient: SecurityObject {
   public func getACL() throws -> PACL {
-    return try getPipeACL(self)
+    var acl: PACL? = nil
+    let result = GetSecurityInfo(
+      self.pipe, SE_KERNEL_OBJECT, SECURITY_INFORMATION(DACL_SECURITY_INFORMATION), nil, nil, &acl, nil, nil)
+
+    guard result == ERROR_SUCCESS, let acl = acl else {
+      throw Win32Error("GetSecurityInfo(\(self.path))", errorCode: result)
+    }
+    return acl
   }
 
   public func setACL(acl: PACL, accessMode: AccessMode) throws {
-    try setPipeACL(self, acl: acl, accessMode: accessMode)
+    let result = SetSecurityInfo(
+      self.pipe, SE_KERNEL_OBJECT, SECURITY_INFORMATION(DACL_SECURITY_INFORMATION), nil, nil, acl, nil)
+
+    guard result == ERROR_SUCCESS else {
+      throw Win32Error("SetSecurityInfo(\(self.path))", errorCode: result)
+    }
   }
 }

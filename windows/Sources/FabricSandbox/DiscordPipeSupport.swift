@@ -17,6 +17,8 @@ public func grantAccessToDiscordPipes(trustee: Trustee) throws {
             continue
         }
 
+        logger.info("Granting access to Discord named pipe: \(pipe.path)")
+
         // Remove any existing ACEs for the trustee and then grant full access
         // Ensure we only modify the DACL if the trustee doesn't already have access, to avoid breaking an existing connection
         var hasEntry = try hasAceEntry(pipe, trustee: trustee)

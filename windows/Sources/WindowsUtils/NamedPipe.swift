@@ -34,7 +34,8 @@ open class NamedPipeServer: Thread, NamedPipe {
     }
 
     var securityAttributesValue = SECURITY_ATTRIBUTES(
-      nLength: DWORD(MemoryLayout<SECURITY_ATTRIBUTES>.size), lpSecurityDescriptor: security,
+      nLength: DWORD(MemoryLayout<SECURITY_ATTRIBUTES>.size),
+      lpSecurityDescriptor: security,
       bInheritHandle: false)
 
     let pipe = CreateNamedPipeW(
