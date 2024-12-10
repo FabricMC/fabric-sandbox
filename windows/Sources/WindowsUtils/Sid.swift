@@ -8,6 +8,15 @@ public class Sid: CustomStringConvertible {
     self.value = sid
   }
 
+  public init(_ str: String) throws {
+    var sid: PSID? = nil
+    guard ConvertStringSidToSidW(str.wide, &sid), let sid = sid else {
+      throw Win32Error("ConvertStringSidToSidW")
+    }
+
+    self.value = sid
+  }
+
   public static func createWellKnown(_ type: WELL_KNOWN_SID_TYPE) throws -> Sid {
     var size = DWORD(_SECURITY_MAX_SID_SIZE())
     let sid: PSID = HeapAlloc(GetProcessHeap(), DWORD(HEAP_ZERO_MEMORY), SIZE_T(size))!

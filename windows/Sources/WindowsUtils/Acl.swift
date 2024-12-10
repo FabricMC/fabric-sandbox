@@ -195,6 +195,22 @@ public protocol Trustee {
   var trustee: TRUSTEE_W { get }
 }
 
+public class WellKnownTrustee: Trustee {
+    public let sid: Sid
+    public let trustee: TRUSTEE_W
+
+    public init(sid: String) throws {
+        self.sid = try Sid(sid)
+        self.trustee = TRUSTEE_W(
+            pMultipleTrustee: nil,
+            MultipleTrusteeOperation: NO_MULTIPLE_TRUSTEE,
+            TrusteeForm: TRUSTEE_IS_SID,
+            TrusteeType: TRUSTEE_IS_WELL_KNOWN_GROUP,
+            ptstrName: _CASTSID(self.sid.value)
+        )
+    }
+}
+
 public protocol SecurityObject {
   func getACL() throws -> PACL
   func setACL(acl: PACL, accessMode: AccessMode) throws
