@@ -24,7 +24,7 @@ public class AppContainer: Trustee {
       MultipleTrusteeOperation: NO_MULTIPLE_TRUSTEE,
       TrusteeForm: TRUSTEE_IS_SID,
       TrusteeType: TRUSTEE_IS_WELL_KNOWN_GROUP,
-      ptstrName: _CASTSID(sid.value)
+      ptstrName: sid.ptstrName
     )
   }
 

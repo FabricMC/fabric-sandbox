@@ -10,8 +10,8 @@ import CxxStdlib
 public class SandboxNamedPipeServer: NamedPipeServer {
   private var speech: Speech? = nil
 
-  public override init(pipeName: String) throws {
-    try super.init(pipeName: pipeName)
+  public override init(pipeName: String, allowedTrustees: [Trustee]) throws {
+    try super.init(pipeName: pipeName, allowedTrustees: allowedTrustees + [TokenUserTrustee()])
   }
 
   public override func onMessage(_ data: [UInt16]) -> Bool {

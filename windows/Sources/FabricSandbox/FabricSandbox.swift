@@ -146,7 +146,9 @@ class FabricSandbox {
 
     // Create a named pipe server for IPC with the sandboxed process
     let namedPipeServer = try SandboxNamedPipeServer(
-      pipeName: "\\\\.\\pipe\\FabricSandbox" + randomString(length: 10))
+      pipeName: "\\\\.\\pipe\\FabricSandbox" + randomString(length: 10),
+      allowedTrustees: [container]
+    )
 
     logger.debug("Named pipe: \(namedPipeServer.path)")
 
