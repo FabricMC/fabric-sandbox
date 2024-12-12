@@ -87,7 +87,7 @@ tasks.register("packageRelease") {
 }
 
 tasks.register("test", Exec) {
-    commandLine "swift" , "test", "--disable-xctest", "-Xswiftc", "-g", "-Xswiftc", "-debug-info-format=codeview", "-Xlinker", "-debug"
+    commandLine "swift" , "test", "--no-parallel", "--disable-xctest", "-Xswiftc", "-g", "-Xswiftc", "-debug-info-format=codeview", "-Xlinker", "-debug"
     group "swift"
 }
 
