@@ -82,6 +82,13 @@ class FabricSandbox {
       try! mountedDisk.unmount()
     }
 
+    let access = TemporaryAccess()
+    defer {
+      // Ensure that the lifetime of access extends past the lifetime of the sandbox
+      // Unlike c++ deinit is not guaranteed to run at the end of the scope
+      let _ = access
+    }
+
     // E.g S:\
     let sandboxRoot = File(mountedDisk.drivePath)
     // E.g S:\profileName or S:\
@@ -105,42 +112,42 @@ class FabricSandbox {
       // This is hard to do as mods commonly write outside of these directories.
 
       // Grant full access to the mounted disk
-      try grantAccess(
+      try access.grant(
         sandboxRoot, trustee: container,
         accessPermissions: [.genericAll])
 
       if let assetsDir = commandLine.getAssetsDir(), isDevEnv {
         // Grant read access to the assets dir in dev
-        try grantAccess(
+        try access.grant(
           assetsDir, trustee: container,
           accessPermissions: [.genericRead])
       }
 
       if let log4jConfig = commandLine.getJvmProp("log4j.configurationFile") {
         // Grant read access to the log4j configuration file
-        try grantAccess(
+        try access.grant(
           File(log4jConfig), trustee: container,
           accessPermissions: [.genericRead])
       }
     } else {
       logger.debug("Working directory is not root, granting access")
       // Grant read and execute to .minecraft
-      try grantAccess(
+      try access.grant(
         sandboxRoot, trustee: container,
         accessPermissions: [.genericRead, .genericExecute])
 
       // Grant full access to the working directory
-      try grantAccess(
+      try access.grant(
         sandboxWorkingDirectory, trustee: container,
         accessPermissions: [.genericAll])
 
-      try grantAccess(
+      try access.grant(
         tempDir, trustee: container,
         accessPermissions: [.genericAll])
     }
 
     // Grant read and execute to Java home
-    try grantAccess(
+    try access.grant(
       javaDirectory, trustee: container,
       accessPermissions: [.genericRead, .genericExecute])
 
