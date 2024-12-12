@@ -64,10 +64,6 @@ DWORD _SECURITY_MAX_SID_SIZE() {
     return SECURITY_MAX_SID_SIZE;
 }
 
-LPWCH _CASTSID(PSID pSid) {
-    return static_cast<LPWCH>(pSid);
-}
-
 LPPROC_THREAD_ATTRIBUTE_LIST allocateAttributeList(size_t size) {
     return (LPPROC_THREAD_ATTRIBUTE_LIST)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, size);
 }

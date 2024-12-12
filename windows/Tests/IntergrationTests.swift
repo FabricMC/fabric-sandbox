@@ -95,8 +95,17 @@ import WindowsUtils
   }
 
   @Test func namedPipe() throws {
-    let server = try TestNamedPipeServer()
-    let (exitCode, output) = try runIntergration(["namedPipe", server.pipeName], namedPipe: server)
+    let pipeName = "\\\\.\\pipe\\FabricSandboxTest" + randomString(length: 10)
+    var server: TestNamedPipeServer? = nil
+    let (exitCode, output) = try runIntergration(["namedPipe", pipeName]) { container in
+      server = try TestNamedPipeServer(allowedTrustees: [container], pipeName: pipeName)
+      return server!
+    }
+    #expect(server != nil)
+    guard let server = server else {
+      return
+    }
+
     #expect(exitCode == 0)
     #expect(output.contains("Sent message to named pipe"))
 
@@ -139,24 +148,29 @@ import WindowsUtils
   }
 
   @Test func mouseMovements() throws {
-    let server = try SandboxNamedPipeServer(
-      pipeName: "\\\\.\\pipe\\FabricSandbox" + randomString(length: 10))
-    let (exitCode, _) = try runIntergration(
-      ["mouseMovements", "-Dsandbox.namedPipe=\(server.path)"], namedPipe: server)
+    let (exitCode, _) = try runIntergration(["mouseMovements"]) { container in
+        try SandboxNamedPipeServer(
+          pipeName: "\\\\.\\pipe\\FabricSandbox" + randomString(length: 10),
+          allowedTrustees: [container]
+        )
+      }
     #expect(exitCode == 0)
   }
 
   @Test func testSpeech() throws {
-    let server = try SandboxNamedPipeServer(
-      pipeName: "\\\\.\\pipe\\FabricSandbox" + randomString(length: 10))
-    let (exitCode, output) = try runIntergration(["speech"], namedPipe: server)
+    let (exitCode, output) = try runIntergration(["speech"]) { container in
+      try SandboxNamedPipeServer(
+        pipeName: "\\\\.\\pipe\\FabricSandbox" + randomString(length: 10),
+        allowedTrustees: [container]
+      )
+    }
     #expect(exitCode == 0)
     #expect(output == "Spoke")
   }
 }
 func runIntergration(
   _ args: [String], capabilities: [SidCapability] = [], filePermissions: [FilePermission] = [],
-  lpac: Bool = false, namedPipe: NamedPipeServer? = nil
+  lpac: Bool = false, namedPipeFactory: ((AppContainer) throws -> NamedPipeServer)? = nil
 ) throws -> (Int, String) {
   let workingDirectory = try getWorkingDirectory()
   let moduleDir = try getModuleFileName().parent()!
@@ -199,6 +213,8 @@ func runIntergration(
   }
 
   var commandLine = [testExecutable.path()] + args
+
+  let namedPipe = try namedPipeFactory?(container)
 
   if let namedPipe = namedPipe {
     if namedPipe is SandboxNamedPipeServer {

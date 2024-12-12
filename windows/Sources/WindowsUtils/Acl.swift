@@ -121,7 +121,7 @@ public func hasAceEntry(_ object: SecurityObject, trustee: Trustee) throws -> Bo
 public func getStringSecurityDescriptor(_ object: SecurityObject) throws -> String {
   let acl = try object.getACL()
 
-  var securityDescriptor: SECURITY_DESCRIPTOR? = nil
+  var securityDescriptor = SECURITY_DESCRIPTOR()
   guard InitializeSecurityDescriptor(&securityDescriptor, DWORD(SECURITY_DESCRIPTOR_REVISION)) else {
     throw Win32Error("InitializeSecurityDescriptor")
   }
@@ -130,6 +130,10 @@ public func getStringSecurityDescriptor(_ object: SecurityObject) throws -> Stri
     throw Win32Error("SetSecurityDescriptorDacl")
   }
 
+  return try getStringSecurityDescriptor(&securityDescriptor)
+}
+
+public func getStringSecurityDescriptor(_ securityDescriptor: inout SECURITY_DESCRIPTOR) throws -> String {
   var stringSecurityDescriptor: LPWSTR? = nil
   let result = ConvertSecurityDescriptorToStringSecurityDescriptorW(
     &securityDescriptor, DWORD(SDDL_REVISION_1), SECURITY_INFORMATION(DACL_SECURITY_INFORMATION), &stringSecurityDescriptor, nil)
@@ -138,6 +142,45 @@ public func getStringSecurityDescriptor(_ object: SecurityObject) throws -> Stri
   }
 
   return String(decodingCString: stringSecurityDescriptor, as: UTF16.self)
+}
+
+public func createACLWithTrustees(_ trustees: [Trustee], accessMode: AccessMode = .grant, accessPermissions: [AccessPermissions] = [.genericAll]) throws -> PACL {
+  var explicitAccess = trustees.map { trustee in
+    return EXPLICIT_ACCESS_W(
+      grfAccessPermissions: accessPermissions.reduce(0) { $0 | $1.rawValue },
+      grfAccessMode: accessMode.accessMode,
+      grfInheritance: accessMode.inheritanceFlags,
+      Trustee: trustee.trustee
+    )
+  }
+
+  var acl: PACL? = nil
+  let result = SetEntriesInAclW(ULONG(explicitAccess.count), &explicitAccess, nil, &acl)
+  guard result == ERROR_SUCCESS, let acl = acl else {
+    throw Win32Error("SetEntriesInAclW")
+  }
+
+  return acl
+}
+
+public func createSelfRelativeSecurityDescriptor(_ securityDescriptor: inout SECURITY_DESCRIPTOR) throws -> UnsafeMutablePointer<SECURITY_DESCRIPTOR> {
+  var relativeSize = DWORD(0)
+    guard !MakeSelfRelativeSD(&securityDescriptor, nil, &relativeSize)
+              && GetLastError() == ERROR_INSUFFICIENT_BUFFER else {
+      throw Win32Error("MakeSelfRelativeSD")
+    }
+
+    let relativeDescriptor = UnsafeMutableRawPointer.allocate(
+      byteCount: Int(relativeSize),
+      alignment: MemoryLayout<SECURITY_DESCRIPTOR>.alignment
+    ).assumingMemoryBound(to: SECURITY_DESCRIPTOR.self)
+
+    guard MakeSelfRelativeSD(&securityDescriptor, relativeDescriptor, &relativeSize) else {
+      relativeDescriptor.deallocate()
+      throw Win32Error("MakeSelfRelativeSD")
+    }
+
+    return relativeDescriptor
 }
 
 // Remove the first ACE that matches the predicate, returning whether an ACE was removed
@@ -192,6 +235,39 @@ private func removeFirstAceIf(
   }
 
   return false
+}
+
+fileprivate func getTokenUserSid() throws -> Sid {
+  var processHandle: HANDLE? = nil
+  let result = OpenProcessToken(GetCurrentProcess(), DWORD(TOKEN_QUERY), &processHandle)
+  guard result, processHandle != INVALID_HANDLE_VALUE, let processHandle = processHandle else {
+    throw Win32Error("OpenProcessToken")
+  }
+
+  let tokenUser = try getTokenInformation(of: TOKEN_USER.self, token: processHandle, tokenClass: TokenUser)
+  defer {
+    tokenUser.deallocate()
+  }
+
+  return try Sid(copy: tokenUser.pointee.User.Sid)
+}
+
+// Based on: https://github.com/apple/swift-system/blob/61a2af5e8b55535be68c35efebb3d398de512352/Sources/System/Internals/WindowsSyscallAdapters.swift#L372
+fileprivate func getTokenInformation<T>(of: T.Type, token: HANDLE, tokenClass: TOKEN_INFORMATION_CLASS) throws -> UnsafePointer<T> {
+  var size = DWORD(1024)
+  for _ in 0..<2 {
+    let buffer = UnsafeMutableRawPointer.allocate(
+      byteCount: Int(size),
+      alignment: MemoryLayout<T>.alignment
+    )
+
+    if GetTokenInformation(token, tokenClass, buffer, size, &size) {
+      return UnsafePointer(buffer.assumingMemoryBound(to: T.self))
+    }
+
+    buffer.deallocate()
+  }
+  throw Win32Error("GetTokenInformation")
 }
 
 public enum AccessPermissions: DWORD {
@@ -249,9 +325,27 @@ public class WellKnownTrustee: Trustee {
             MultipleTrusteeOperation: NO_MULTIPLE_TRUSTEE,
             TrusteeForm: TRUSTEE_IS_SID,
             TrusteeType: TRUSTEE_IS_WELL_KNOWN_GROUP,
-            ptstrName: _CASTSID(self.sid.value)
+            ptstrName: self.sid.ptstrName
         )
     }
+}
+
+// A trustee that represents the current process/user
+public class TokenUserTrustee: Trustee {
+  public let sid: Sid
+  public let trustee: TRUSTEE_W
+
+  public init() throws {
+    let sid = try getTokenUserSid()
+    self.sid = sid
+    self.trustee = TRUSTEE_W(
+      pMultipleTrustee: nil,
+      MultipleTrusteeOperation: NO_MULTIPLE_TRUSTEE,
+      TrusteeForm: TRUSTEE_IS_SID,
+      TrusteeType: TRUSTEE_IS_USER,
+      ptstrName: sid.ptstrName
+    )
+  }
 }
 
 public protocol SecurityObject {

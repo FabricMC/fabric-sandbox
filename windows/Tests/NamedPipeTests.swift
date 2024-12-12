@@ -24,10 +24,10 @@ class TestNamedPipeServer: NamedPipeServer {
   var onMessageEvent: HANDLE
   let pipeName: String
 
-  init() throws {
+  init(allowedTrustees: [Trustee] = [], pipeName: String? = nil) throws {
     onMessageEvent = CreateEventW(nil, false, false, nil)
-    self.pipeName = "\\\\.\\pipe\\FabricSandboxTest" + randomString(length: 10)
-    try super.init(pipeName: self.pipeName)
+    self.pipeName = pipeName ?? "\\\\.\\pipe\\FabricSandboxTest" + randomString(length: 10)
+    try super.init(pipeName: self.pipeName, allowedTrustees: allowedTrustees + [TokenUserTrustee()])
   }
 
   override func onMessage(_ data: [UInt16]) -> Bool {

@@ -3,8 +3,22 @@ import WinSDKExtras
 
 public class Sid: CustomStringConvertible {
   public var value: PSID
+  public var ptstrName: UnsafeMutablePointer<UInt16> {
+    return value.assumingMemoryBound(to: UInt16.self)
+  }
 
   public init(_ sid: PSID) {
+    self.value = sid
+  }
+
+  public init (copy: PSID) throws {
+    let size = GetLengthSid(copy)
+    let sid: PSID = HeapAlloc(GetProcessHeap(), DWORD(HEAP_ZERO_MEMORY), SIZE_T(size))!
+    let result = CopySid(size, sid, copy)
+    guard result else {
+      throw Win32Error("CopySid")
+    }
+
     self.value = sid
   }
 

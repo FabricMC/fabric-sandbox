@@ -35,9 +35,6 @@ DWORD _MAKELANGID(WORD p, WORD s);
 
 DWORD _SECURITY_MAX_SID_SIZE();
 
-// TODO - This is a hack, need to find a better way to cast PSID to LPWCH in swift
-LPWCH _CASTSID(PSID pSid);
-
 // TODO - again how to do this nicely in swift
 LPPROC_THREAD_ATTRIBUTE_LIST allocateAttributeList(size_t dwAttributeCount);
 

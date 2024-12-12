@@ -1,15 +1,6 @@
 import WinSDK
 
-// https://stackoverflow.com/questions/39138674/accessing-named-pipe-servers-from-within-ie-epm-bho
-// Local System - full access
-// Everyone - full access
-// App packages - full access
-
-/// A named pipe server can receive messages from a single client
-
-/// A write only named pipe client
 let bufferSize = DWORD(4096)
-let securityDescriptor = "S:(ML;;NW;;;LW)D:(A;;FA;;;SY)(A;;FA;;;WD)(A;;FA;;;AC)"
 
 protocol NamedPipe {
   var pipe: HANDLE { get }
@@ -20,22 +11,28 @@ open class NamedPipeServer: Thread, NamedPipe {
   public let pipe: HANDLE
   public let path: String
 
-  public init(pipeName: String) throws {
-    // Create a security descriptor
-    var security: PSECURITY_DESCRIPTOR?
-    let result = ConvertStringSecurityDescriptorToSecurityDescriptorW(
-      securityDescriptor.wide,
-      DWORD(SDDL_REVISION_1),
-      &security,
-      nil
-    )
+  public init(pipeName: String, allowedTrustees: [Trustee]) throws {
+    let acl = try createACLWithTrustees(allowedTrustees)
+    defer { LocalFree(acl) }
+
+    var securityDescriptor = SECURITY_DESCRIPTOR()
+
+    var result = InitializeSecurityDescriptor(&securityDescriptor, DWORD(SECURITY_DESCRIPTOR_REVISION))
     guard result else {
-      throw Win32Error("ConvertStringSecurityDescriptorToSecurityDescriptorW")
+      throw Win32Error("InitializeSecurityDescriptor")
     }
+
+    result = SetSecurityDescriptorDacl(&securityDescriptor, true, acl, false)
+    guard result else {
+      throw Win32Error("SetSecurityDescriptorDacl")
+    }
+
+    let relativeDescriptor = try createSelfRelativeSecurityDescriptor(&securityDescriptor)
+    defer { relativeDescriptor.deallocate() }
 
     var securityAttributesValue = SECURITY_ATTRIBUTES(
       nLength: DWORD(MemoryLayout<SECURITY_ATTRIBUTES>.size),
-      lpSecurityDescriptor: security,
+      lpSecurityDescriptor: relativeDescriptor,
       bInheritHandle: false)
 
     let pipe = CreateNamedPipeW(
