@@ -56,7 +56,7 @@ public class Sid: CustomStringConvertible {
     let capabilitySids = UnsafeMutablePointer<UnsafeMutablePointer<PSID?>?>.allocate(capacity: 0)
     var capabilitySidsCount: DWORD = 0
 
-    let result = _DeriveCapabilitySidsFromName(
+    let result = DeriveCapabilitySidsFromName(
       type.wide,
       capabilityGroupSids,
       &capabilityGroupSidsCount,
