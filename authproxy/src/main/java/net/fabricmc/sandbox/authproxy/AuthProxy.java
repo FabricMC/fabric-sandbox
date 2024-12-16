@@ -36,6 +36,10 @@ public class AuthProxy implements RequestProcessor, AutoCloseable {
         this.server.start();
     }
 
+    public static AuthProxy create(int port, String realAccessToken, String sandboxToken) throws IOException {
+        return create(port, new AccessToken(realAccessToken, sandboxToken));
+    }
+
     public static AuthProxy create(int port, AccessToken accessToken) throws IOException {
         return create(port, accessToken, SESSION_HOST, SERVICES_HOST);
     }
@@ -64,11 +68,11 @@ public class AuthProxy implements RequestProcessor, AutoCloseable {
     }
 
     // The list of arguments to pass to the Minecraft game to configure it to use the proxy
-    public List<String> getArguments() {
-        return List.of(
+    public String[] getArguments() {
+        return new String[] {
             "-D" + SESSION_SYSTEM_PROPERTY + "=" + getSessionProxyAddress(),
             "-D" + SERVICES_SYSTEM_PROPERTY + "=" + getApiProxyAddress()
-        );
+        };
     }
 
     @Override

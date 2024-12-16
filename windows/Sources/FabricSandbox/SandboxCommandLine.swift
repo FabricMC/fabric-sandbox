@@ -87,7 +87,7 @@ class SandboxCommandLine {
   }
 
   // Returns the arguments to pass to the sandboxed JVM.
-  func getSandboxArgs(dotMinecraftDir: File, sandboxRoot: File, namedPipePath: String) throws
+  func getSandboxArgs(dotMinecraftDir: File, sandboxRoot: File, namedPipePath: String, extraJvmArgs: [String] = []) throws
     -> [String]
   {
     var args = try getArgsExpandingArgsFiles()
@@ -161,6 +161,8 @@ class SandboxCommandLine {
       }
 
       args.insert("-Dsandbox.namedPipe=\(namedPipePath)", at: jvmArgsIndex)
+
+      args.insert(contentsOf: extraJvmArgs, at: jvmArgsIndex)
 
       // Enable this to debug the sandboxed process, you will need to exempt the sandbox from the loopback networking like so:
       // CheckNetIsolation.exe LoopbackExempt -is -p=<SID>
