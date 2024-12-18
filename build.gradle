@@ -20,6 +20,21 @@ java {
 	targetCompatibility = JavaVersion.VERSION_17
 }
 
+configurations {
+	authProxy
+}
+
+dependencies {
+	authProxy project(":authproxy")
+}
+
+jar {
+	inputs.files configurations.authProxy
+	from {
+		configurations.authProxy.collect { it.isDirectory() ? it : zipTree(it) }
+	}
+}
+
 evaluationDependsOn(":windows")
 
 def archs = [

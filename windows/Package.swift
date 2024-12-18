@@ -63,7 +63,7 @@ let package = Package(
         // The Minecraft/Fabric specific parts of the sandbox
         .target(
             name: "FabricSandbox",
-            dependencies: [ .target(name: "Jni"), .target(name: "WinSDKExtras"), .target(name: "WindowsUtils"), .target(name: "Sandbox"), .product(name: "Logging", package: "swift-log")],
+            dependencies: [ .target(name: "Jni"), .target(name: "WinSDKExtras"), .target(name: "WindowsUtils"), .target(name: "Sandbox"), .target(name: "AuthProxy"), .product(name: "Logging", package: "swift-log")],
             swiftSettings: [.interoperabilityMode(.Cxx)],
             linkerSettings: linkerSettings
         ),
@@ -78,6 +78,11 @@ let package = Package(
         .target(
             name: "Hook",
             dependencies: [ .target(name: "Runtime"), .product(name: "Detours", package: "Detours")],
+            swiftSettings: [.interoperabilityMode(.Cxx)]
+        ),
+        .target(
+            name: "AuthProxy",
+            dependencies: [ .target(name: "Jni") ],
             swiftSettings: [.interoperabilityMode(.Cxx)]
         ),
         // Packager to copy all the required files into a single directory

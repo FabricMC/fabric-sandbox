@@ -86,8 +86,16 @@ class SandboxCommandLine {
     return File(args[index + 1])
   }
 
+  func getAccessToken() -> String? {
+    let accessToken = args.firstIndex(of: "--accessToken")
+    guard let index = accessToken, index + 1 < args.count else {
+      return nil
+    }
+    return args[index + 1]
+  }
+
   // Returns the arguments to pass to the sandboxed JVM.
-  func getSandboxArgs(dotMinecraftDir: File, sandboxRoot: File, namedPipePath: String) throws
+  func getSandboxArgs(dotMinecraftDir: File, sandboxRoot: File, namedPipePath: String, extraJvmArgs: [String] = [], replaceAccessToken: String? = nil) throws
     -> [String]
   {
     var args = try getArgsExpandingArgsFiles()
@@ -128,7 +136,9 @@ class SandboxCommandLine {
           // Rewrite the remap classpath file to ensure that all of the entries are within the sandbox.
           let file = File(String(args[i].dropFirst("-Dfabric.remapClasspathFile=".count)))
           args[i] = "-Dfabric.remapClasspathFile=\(try rewriteRemapClasspathFile(file, sandboxRoot: sandboxRoot).path())"
-      }
+      } else if args[i] == "--accessToken", let accessToken = replaceAccessToken {
+          args[i + 1] = accessToken
+      } else
 
       if args[i].starts(with: "-D") && jvmArgsIndex < 0 {
         // Find the first JVM argument, so we can insert our own at the same point.
@@ -161,6 +171,8 @@ class SandboxCommandLine {
       }
 
       args.insert("-Dsandbox.namedPipe=\(namedPipePath)", at: jvmArgsIndex)
+
+      args.insert(contentsOf: extraJvmArgs, at: jvmArgsIndex)
 
       // Enable this to debug the sandboxed process, you will need to exempt the sandbox from the loopback networking like so:
       // CheckNetIsolation.exe LoopbackExempt -is -p=<SID>

@@ -3,15 +3,17 @@ import WinSDK
 import WinSDKExtras
 import WindowsUtils
 import Logging
+import AuthProxy
 
 /// TODO: Add support for LPAC (Less Privileged AppContainer)
 
 private let lpac = false
+private let useAuthProxy = false
 
 var logger = Logger(label: "net.fabricmc.sandbox")
 
 class FabricSandbox {
-  func run() throws {
+  func run(jni: JNIEnvPtr? = nil) throws {
     guard _IsWindows10OrGreater() else {
       throw SandboxError("Fabric Sandbox requires Windows 10 or later")
     }
@@ -163,8 +165,26 @@ class FabricSandbox {
     // TODO we might want to run this every so often to handle new pipes
     try grantAccessToDiscordPipes(trustee: container)
 
+    let realAccessToken = commandLine.getAccessToken()
+    var authProxy: AuthProxy? = nil
+    var sandboxToken: String? = nil
+
+    if useAuthProxy, let realAccessToken = realAccessToken {
+      guard let jni = jni else {
+        throw SandboxError("AuthProxy requires JNIEnv")
+      }
+
+      logger.info("AuthProxy enabled")
+      sandboxToken = try generateUUID()
+      authProxy = try AuthProxy.create(jni, port: 8080, realAccessToken: realAccessToken, sandboxToken: sandboxToken!)
+    }
+
     let args = try commandLine.getSandboxArgs(
-      dotMinecraftDir: dotMinecraft, sandboxRoot: sandboxRoot, namedPipePath: namedPipeServer.path)
+      dotMinecraftDir: dotMinecraft,
+      sandboxRoot: sandboxRoot,
+      namedPipePath: namedPipeServer.path,
+      extraJvmArgs: authProxy?.getArguments() ?? [],
+      replaceAccessToken: sandboxToken)
 
     logger.debug("Args: \(args)")
 
