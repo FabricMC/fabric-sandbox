@@ -35,8 +35,8 @@ public class JString {
     }
 
     deinit {
-        jstr.withMemoryRebound(to: jobject.self, capacity: 1) {
-            jni.pointee.DeleteLocalRef($0.pointee)
+        jstr.withMemoryRebound(to: _jobject.self, capacity: 1) {
+            jni.pointee.DeleteLocalRef($0)
         }
     }
 }

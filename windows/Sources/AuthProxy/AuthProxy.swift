@@ -55,24 +55,26 @@ public class AuthProxy {
             throw JavaError.jni("Failed to get return value")
         }
 
-        let length = array.withMemoryRebound(to: jarray.self, capacity: 1) { array in
-            jni.pointee.GetArrayLength(array.pointee)
+        let length = array.withMemoryRebound(to: _jarray.self, capacity: 1) { array in
+            jni.pointee.GetArrayLength(array)
         }
 
         return try array.withMemoryRebound(to: jobjectArray.self, capacity: 1) { array in
-            try (1...length).map { index in
-                let element = jni.pointee.GetObjectArrayElement(array.pointee, index)
+            try (0..<length).map { index in
+                let element = array.withMemoryRebound(to: _jobjectArray.self, capacity: 1) { array in
+                    jni.pointee.GetObjectArrayElement(array, index)
+                }
                 guard let element = element else {
                     throw JavaError.jni("Failed to get array element")
                 }
 
-                return try element.withMemoryRebound(to: jstring.self, capacity: 1) { string in
-                    let cString = jni.pointee.GetStringUTFChars(string.pointee, nil)
+                return try element.withMemoryRebound(to: _jstring.self, capacity: 1) { string in
+                    let cString = jni.pointee.GetStringUTFChars(string, nil)
                     guard let cString = cString else {
                         throw JavaError.jni("Failed to get string")
                     }
                     defer {
-                        jni.pointee.ReleaseStringUTFChars(string.pointee, cString)
+                        jni.pointee.ReleaseStringUTFChars(string, cString)
                     }
 
                     return String(cString: cString)
