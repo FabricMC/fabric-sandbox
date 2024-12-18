@@ -165,22 +165,26 @@ class FabricSandbox {
     // TODO we might want to run this every so often to handle new pipes
     try grantAccessToDiscordPipes(trustee: container)
 
+    let realAccessToken = commandLine.getAccessToken()
     var authProxy: AuthProxy? = nil
+    var sandboxToken: String? = nil
 
-    if useAuthProxy {
+    if useAuthProxy, let realAccessToken = realAccessToken {
       guard let jni = jni else {
         throw SandboxError("AuthProxy requires JNIEnv")
       }
 
       logger.info("AuthProxy enabled")
-      authProxy = try AuthProxy.create(jni, port: 8080, realAccessToken: "real", sandboxToken: "sandbox")
+      sandboxToken = try generateUUID()
+      authProxy = try AuthProxy.create(jni, port: 8080, realAccessToken: realAccessToken, sandboxToken: sandboxToken!)
     }
 
     let args = try commandLine.getSandboxArgs(
       dotMinecraftDir: dotMinecraft,
       sandboxRoot: sandboxRoot,
       namedPipePath: namedPipeServer.path,
-      extraJvmArgs: authProxy?.getArguments() ?? [])
+      extraJvmArgs: authProxy?.getArguments() ?? [],
+      replaceAccessToken: sandboxToken)
 
     logger.debug("Args: \(args)")
 
