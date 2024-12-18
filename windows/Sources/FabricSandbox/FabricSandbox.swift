@@ -8,7 +8,7 @@ import AuthProxy
 /// TODO: Add support for LPAC (Less Privileged AppContainer)
 
 private let lpac = false
-private let useAuthProxy = true
+private let useAuthProxy = false
 
 var logger = Logger(label: "net.fabricmc.sandbox")
 

@@ -2,14 +2,21 @@ package net.fabricmc.sandbox.authproxy;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.Arrays;
 
 public class ProxyHttpHandler implements HttpHandler {
+    private static final boolean ENABLE_SENSITIVE_LOGGING = false;
+    private static final Logger LOGGER = LoggerFactory.getLogger(ProxyHttpHandler.class);
+
     private final RequestProcessor requestProcessor;
     private final String pathPrefix;
     private final String proxyHost;
@@ -25,6 +32,8 @@ public class ProxyHttpHandler implements HttpHandler {
 
         this.proxyHost = proxyHost;
         this.httpClient = httpClient;
+
+        LOGGER.info("Proxying requests with path prefix '{}' to '{}'", pathPrefix, proxyHost);
     }
 
     @Override
@@ -32,7 +41,7 @@ public class ProxyHttpHandler implements HttpHandler {
         try {
             handleInternal(exchange);
         } catch (Exception e) {
-//            e.printStackTrace();
+            e.printStackTrace();
             exchange.sendResponseHeaders(500, 0);
         } finally {
             exchange.close();
@@ -40,7 +49,26 @@ public class ProxyHttpHandler implements HttpHandler {
     }
 
     private void handleInternal(HttpExchange exchange) throws IOException {
-        RequestProcessor.Request request = requestProcessor.process(exchange);
+        byte[] body;
+
+        try (InputStream is = exchange.getRequestBody()) {
+            body = is.readAllBytes();
+        }
+
+        if (body.length == 0) {
+            body = null;
+        }
+
+
+        if (ENABLE_SENSITIVE_LOGGING) {
+            LOGGER.warn("Incoming Request:");
+            LOGGER.warn("  Path: {}", exchange.getRequestURI().toString());
+            LOGGER.warn("  Method: {}", exchange.getRequestMethod());
+            LOGGER.warn("  Headers: {}", exchange.getRequestHeaders());
+            LOGGER.warn("  Body: {}", body != null ? new String(body) : "null");
+        }
+
+        RequestProcessor.Request request = requestProcessor.process(exchange, body);
 
         String path = request.path();
         if (!path.startsWith(pathPrefix)) {
@@ -51,7 +79,15 @@ public class ProxyHttpHandler implements HttpHandler {
         String pathWithoutPrefix = path.substring(pathPrefix.length());
         URI proxyUri = URI.create(proxyHost + pathWithoutPrefix);
 
-        byte[] body = request.body();
+        if (ENABLE_SENSITIVE_LOGGING) {
+            LOGGER.warn("Proxy Outgoing Request:");
+            LOGGER.warn("  Path: {}", proxyUri);
+            LOGGER.warn("  Method: {}", request.method());
+            LOGGER.warn("  Headers: {}", Arrays.toString(request.headers()));
+            LOGGER.warn("  Body: {}", request.body() != null ? new String(request.body()) : "null");
+        }
+
+        body = request.body();
 
         HttpRequest.Builder proxyRequest = HttpRequest.newBuilder()
                 .uri(proxyUri)
@@ -64,6 +100,13 @@ public class ProxyHttpHandler implements HttpHandler {
             response = httpClient.send(proxyRequest.build(), HttpResponse.BodyHandlers.ofByteArray());
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
+        }
+
+        if (ENABLE_SENSITIVE_LOGGING) {
+            LOGGER.warn("Proxy Response:");
+            LOGGER.warn("  Status: {}", response.statusCode());
+            LOGGER.warn("  Headers: {}", response.headers());
+            LOGGER.warn("  Body: {}", new String(response.body()));
         }
 
         exchange.sendResponseHeaders(response.statusCode(), response.body().length);

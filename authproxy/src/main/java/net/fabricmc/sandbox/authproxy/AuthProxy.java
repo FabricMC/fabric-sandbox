@@ -5,6 +5,7 @@ import com.sun.net.httpserver.HttpExchange;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.http.HttpClient;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -81,7 +82,7 @@ public class AuthProxy implements RequestProcessor, AutoCloseable {
     }
 
     @Override
-    public Request process(HttpExchange exchange) {
+    public Request process(HttpExchange exchange, byte[] body) {
         return new Request() {
             @Override
             public String path() {
@@ -103,15 +104,11 @@ public class AuthProxy implements RequestProcessor, AutoCloseable {
             }
 
             @Override
-            public byte[] body() throws IOException {
-                byte[] body;
-
-                try (InputStream is = exchange.getRequestBody()) {
-                    body = is.readAllBytes();
-                }
-
-                if (body.length == 0) {
-                    return null;
+            public byte[] body() {
+                if ("/session/session/minecraft/join".equals(path())) {
+                    String str = new String(body, StandardCharsets.UTF_8);
+                    str = str.replace(accessToken.sandboxToken(), accessToken.realAccessToken());
+                    return str.getBytes(StandardCharsets.UTF_8);
                 }
 
                 return body;

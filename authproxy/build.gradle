@@ -10,6 +10,8 @@ repositories {
 }
 
 dependencies {
+    compileOnly 'org.slf4j:slf4j-api:2.0.16'
+
     testImplementation "com.mojang:authlib:6.0.57"
     testImplementation 'io.javalin:javalin:6.3.0'
     testImplementation 'org.slf4j:slf4j-simple:2.0.16'

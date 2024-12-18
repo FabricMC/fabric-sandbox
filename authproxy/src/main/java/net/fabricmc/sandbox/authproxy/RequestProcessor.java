@@ -7,7 +7,7 @@ import java.io.IOException;
 import java.util.stream.Stream;
 
 public interface RequestProcessor {
-    Request process(HttpExchange exchange);
+    Request process(HttpExchange exchange, byte[] body);
 
     interface Request {
         String path();
@@ -16,7 +16,7 @@ public interface RequestProcessor {
 
         Header[] headers();
 
-        byte[] body() throws IOException;
+        byte[] body();
     }
 
     record Header(String key, String value) {
