@@ -70,14 +70,21 @@ open class NamedPipeServer: Thread, NamedPipe {
 
     // Read the messages
     while true {
-      var message = [UInt16](repeating: 0, count: Int(bufferSize) / MemoryLayout<WCHAR>.size)
-      var bytesRead: DWORD = 0
-      let read = ReadFile(pipe, &message, bufferSize - 1, &bytesRead, nil)
-      guard read else {
+      let message = try? readBytes(pipe: pipe)
+      guard let message = message else {
+        // The client disconnected
         break
       }
 
-      if onMessage(message) {
+      guard let response = onMessage(message) else {
+        // The server will disconnect from the client
+        break
+      }
+
+      do {
+        try writeBytes(pipe: pipe, data: response)
+      } catch {
+        // The client disconnected
         break
       }
     }
@@ -86,9 +93,10 @@ open class NamedPipeServer: Thread, NamedPipe {
     DisconnectNamedPipe(pipe)
   }
 
-  // Receives a message from the client and returns whether the server should stop
-  open func onMessage(_ message: [UInt16]) -> Bool {
-    return false
+  // Receives a message from the client and returns a response
+  // If the response is nil, the server will disconnect from the client
+  open func onMessage(_ message: [UInt16]) -> [UInt16]? {
+    return []
   }
 }
 
@@ -96,7 +104,9 @@ public class NamedPipeClient: NamedPipe {
   public let pipe: HANDLE
   public let path: String
 
-  public init(pipeName: String, desiredAccess: DWORD = DWORD(GENERIC_WRITE), mode: DWORD? = DWORD(PIPE_READMODE_MESSAGE)) throws {
+  private let mutex = Mutex()
+
+  public init(pipeName: String, desiredAccess: DWORD = DWORD(GENERIC_WRITE) | DWORD(GENERIC_READ), mode: DWORD? = DWORD(PIPE_READMODE_MESSAGE)) throws {
     let pipe = CreateFileW(
       pipeName.wide,
       desiredAccess,
@@ -126,16 +136,49 @@ public class NamedPipeClient: NamedPipe {
     CloseHandle(pipe)
   }
 
-  public func sendBytes(_ bytes: [UInt16]) throws {
-    var bytesWritten = DWORD(0)
-    let write = WriteFile(
-      pipe, bytes, DWORD(bytes.count * MemoryLayout<UInt16>.size), &bytesWritten, nil)
-    guard write else {
-      throw Win32Error("WriteFile")
-    }
+  public func sendBytes(_ bytes: [UInt16]) throws -> [UInt16] {
+    // Only allow one thread to write at a time
+    try mutex.wait()
+    defer { mutex.release() }
+
+    try writeBytes(pipe: pipe, data: bytes)
+    return try readBytes(pipe: pipe)
   }
 
-  public func send(_ text: String) throws {
-    try sendBytes(text.wide)
+  public func send(_ text: String) throws -> String {
+    let response = try sendBytes(text.wide)
+    return String(decodingCString: response, as: UTF16.self)
   }
+}
+
+fileprivate func writeBytes(pipe: HANDLE, data: [UInt16]) throws {
+  guard data.count > 0 else {
+    throw Win32Error("Message is empty", errorCode: DWORD(ERROR_INVALID_PARAMETER))
+  }
+
+  guard data.count < bufferSize else {
+    throw Win32Error("Message is too large to write", errorCode: DWORD(ERROR_INVALID_PARAMETER))
+  }
+
+  var bytesWritten = DWORD(0)
+  let write = WriteFile(
+    pipe, data, DWORD(data.count * MemoryLayout<UInt16>.size), &bytesWritten, nil)
+  guard write else {
+    throw Win32Error("WriteFile")
+  }
+
+  guard FlushFileBuffers(pipe) else {
+    throw Win32Error("FlushFileBuffers")
+  }
+}
+
+fileprivate func readBytes(pipe: HANDLE) throws -> [UInt16] {
+  var message = [UInt16](repeating: 0, count: Int(bufferSize) / MemoryLayout<WCHAR>.size)
+  var bytesRead: DWORD = 0
+  let read = ReadFile(pipe, &message, bufferSize - 1, &bytesRead, nil)
+  guard read else {
+    throw Win32Error("ReadFile")
+  }
+
+  return message
 }

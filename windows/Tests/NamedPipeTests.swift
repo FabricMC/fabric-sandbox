@@ -9,13 +9,15 @@ import FabricSandbox
     let client = try NamedPipeClient(pipeName: server.pipeName)
 
     let message = "Hello, World!"
-    try client.send(message)
+    let response = try client.send(message)
+    #expect(response == message)
 
     server.waitForNextMessage()
 
     let receivedMessage = server.lastMessage ?? ""
     #expect(receivedMessage == message)
-    try client.send("exit")
+    let exitResponse = try? client.send("exit")
+    #expect(exitResponse == nil)
   }
 }
 
@@ -30,16 +32,17 @@ class TestNamedPipeServer: NamedPipeServer {
     try super.init(pipeName: self.pipeName, allowedTrustees: allowedTrustees + [TokenUserTrustee()])
   }
 
-  override func onMessage(_ data: [UInt16]) -> Bool {
+  override func onMessage(_ data: [UInt16]) -> [UInt16]? {
     let message = String(decodingCString: data, as: UTF16.self).trimmed()
     if message == "exit" {
-      return true
+      return nil
     }
 
     self.lastMessage = message
     SetEvent(onMessageEvent)
 
-    return false
+    // Echo the message back to the client
+    return message.wide
   }
 
   func waitForNextMessage() {
