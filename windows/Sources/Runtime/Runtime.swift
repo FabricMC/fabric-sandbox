@@ -66,7 +66,7 @@ func sendMessage(_ message: PipeMessages) {
   }
 
   do {
-    try pipeClient.sendBytes(message.toBytes())
+    let _ = try pipeClient.sendBytes(message.toBytes())
   } catch {
     fatalError("Failed to send pipe message")
   }

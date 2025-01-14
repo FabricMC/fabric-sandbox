@@ -14,16 +14,16 @@ public class SandboxNamedPipeServer: NamedPipeServer {
     try super.init(pipeName: pipeName, allowedTrustees: allowedTrustees + [TokenUserTrustee()])
   }
 
-  public override func onMessage(_ data: [UInt16]) -> Bool {
+  public override func onMessage(_ data: [UInt16]) -> [UInt16]? {
     let message = PipeMessages.fromBytes(data)
     guard let message = message else {
       print("Failed to parse message")
-      return true
+      return nil
     }
 
     switch message {
     case .exit:
-      return true
+      return nil
     case .clipCursor(let rect):
       if rect.left < 0 && rect.top < 0 && rect.right < 0 && rect.bottom < 0 {
         // Unclip the cursor when the rect is all 0s
@@ -47,7 +47,8 @@ public class SandboxNamedPipeServer: NamedPipeServer {
       }
       speech!.Skip()
     }
-    return false
+
+    return [ 0 ]
   }
 }
 

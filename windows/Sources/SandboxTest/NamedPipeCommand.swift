@@ -5,7 +5,7 @@ class NamedPipeCommand: Command {
     do {
       let name = arguments.first ?? "TestPipe"
       let pipeClient = try NamedPipeClient(pipeName: name)
-      try pipeClient.send("Hello, World!")
+      let _ = try pipeClient.send("Hello, World!")
       print("Sent message to named pipe")
     } catch {
       print("Error: \(error)")
